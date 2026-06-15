@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星云智能 - 评分活动赛控后台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link href="https://fonts.loli.net/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['Share Tech Mono','monospace'] },
+          boxShadow: {
+            'neon-blue': '0 0 20px rgba(59,130,246,0.45)',
+            'neon-gold': '0 0 30px rgba(245,158,11,0.65)',
+            'neon-emerald': '0 0 20px rgba(16,185,129,0.5)',
+            'neon-purple': '0 0 20px rgba(168,85,247,0.45)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background: rgba(15,23,42,0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.25); border-radius:4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(59,130,246,0.45); }
+    .bg-grid { background-size:40px 40px; background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px); }
+    .nebula-1 { filter:blur(140px); background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 75%); }
+    .nebula-2 { filter:blur(140px); background: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 75%); }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen overflow-x-hidden relative bg-grid flex flex-col">
+
+  <div class="absolute top-10 left-10 w-[600px] h-[600px] nebula-1 pointer-events-none -z-10"></div>
+  <div class="absolute bottom-10 right-10 w-[700px] h-[700px] nebula-2 pointer-events-none -z-10"></div>
+
+  <!-- HEADER -->
+  <header class="w-full bg-slate-950/80 border-b border-slate-900/80 backdrop-blur-md px-6 py-4 flex flex-col xl:flex-row items-center justify-between flex-shrink-0 relative z-10 gap-4">
+    <div class="flex items-center gap-3 xl:w-1/4">
+      <div class="flex items-center gap-2 bg-slate-900/60 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-800">
+        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_#3b82f6]"></span>
+        <span class="text-xs font-mono font-bold tracking-widest text-blue-400">NEBULA CONTROL v2.6</span>
+      </div>
+    </div>
+
+    <div class="xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2 text-center py-2">
+      <div class="relative px-10 py-3">
+        <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-blue-500/80"></div>
+        <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-blue-500/80"></div>
+        <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-blue-500/80"></div>
+        <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-blue-500/80"></div>
+        <h1 id="header-title" class="text-xl sm:text-2xl lg:text-[1.85rem] font-black tracking-[0.12em] bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent select-none py-1 leading-normal filter drop-shadow-[0_0_15px_rgba(59,130,246,0.4)] whitespace-nowrap overflow-hidden text-ellipsis block max-w-[55vw] xl:max-w-[40vw] mx-auto" title="">
+          评分活动赛控后台
+        </h1>
+      </div>
+    </div>
+
+      <div class="flex items-center gap-2 justify-end xl:w-1/4">
+      <!-- 大赛选择 -->
+      <select id="comp-selector" onchange="onSelectCompetition(this.value)" class="text-xs font-semibold py-2 px-3 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 focus:outline-none focus:border-blue-500 max-w-[180px]">
+        <option value="">— 选择大赛 —</option>
+      </select>
+      <button onclick="seedDemo()" title="一键生成 6 作品 + 7 评委(含等级)的样例大赛" class="text-xs font-semibold py-2 px-3.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 transition">⚡ 样例</button>
+      <button onclick="openNewCompModal()" class="text-xs font-semibold py-2 px-3.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition text-slate-400 hover:text-slate-200">+ 新建</button>
+    </div>
+  </header>
+
+  <!-- 空状态 -->
+  <div id="empty-state" class="flex-grow flex items-center justify-center">
+    <div class="text-center text-slate-500">
+      <div class="text-6xl mb-4">🛰️</div>
+      <p class="text-sm">请选择或新建一场评分大赛以开始</p>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE -->
+  <main id="workspace" class="hidden flex-grow flex flex-col lg:flex-row h-[calc(100vh-100px)] overflow-hidden">
+    <!-- LEFT SIDEBAR -->
+    <div class="w-full lg:w-64 bg-slate-950/40 border-b lg:border-b-0 lg:border-r border-slate-900 p-4 flex flex-col justify-between flex-shrink-0">
+      <div class="space-y-1.5" id="nav-tabs-container">
+        <button onclick="switchTab('tab-works')" id="btn-tab-works" class="tab-btn active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-gradient-to-r from-blue-600/10 to-transparent border-l-4 border-l-blue-500 text-blue-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+          作品信息录入
+        </button>
+        <button onclick="switchTab('tab-standards')" id="btn-tab-standards" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-400 hover:bg-slate-900/40 hover:text-slate-200">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 00.1.0" /></svg>
+          评分标准设置
+        </button>
+        <button onclick="switchTab('tab-judges')" id="btn-tab-judges" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-400 hover:bg-slate-900/40 hover:text-slate-200">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+          评委名单录入
+        </button>
+        <button onclick="switchTab('tab-summary')" id="btn-tab-summary" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-400 hover:bg-slate-900/40 hover:text-slate-200">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+          概览检查发布
+        </button>
+      </div>
+
+      <div class="bg-slate-900/40 p-4 rounded-2xl border border-slate-900 mt-4 space-y-3">
+        <span class="text-[10px] text-slate-500 uppercase tracking-widest font-mono">配置就绪状态</span>
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-xs"><span class="text-slate-400">已录入作品</span><span id="stat-works-count" class="font-bold text-blue-400 font-mono">0 组</span></div>
+          <div class="flex justify-between items-center text-xs"><span class="text-slate-400">标准权重</span><span id="stat-standards-weight" class="font-bold text-rose-500 font-mono">0%</span></div>
+          <div class="flex justify-between items-center text-xs"><span class="text-slate-400">评委数量</span><span id="stat-judges-count" class="font-bold text-emerald-400 font-mono">0 位</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT CONTENT -->
+    <div class="flex-grow overflow-y-auto p-6 relative min-h-0 bg-slate-900/5">
+
+      <!-- TAB 1: WORKS -->
+      <div id="tab-works" class="tab-pane space-y-6">
+        <div><h2 class="text-lg sm:text-xl font-bold text-white tracking-wide">作品录入</h2><p class="text-xs text-slate-400 mt-0.5">登记路演选手及其项目的关键信息</p></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div class="space-y-6 lg:col-span-1">
+            <div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl space-y-4 shadow-xl">
+              <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">大赛基础配置</h3>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1">大赛名称</label>
+                <input type="text" id="comp-name-input" oninput="onCompNameInput(this.value)" placeholder="如：2026 全球未来科技创新大赛 · 决赛现场" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150">
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1">大赛描述 (可选)</label>
+                <textarea id="comp-desc-input" placeholder="大赛简介..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150 h-20 resize-none"></textarea>
+              </div>
+            </div>
+            <div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl space-y-4 shadow-xl">
+              <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">新增作品卡片</h3>
+              <form id="form-work" class="space-y-4" onsubmit="addWork(event)">
+                <div><label class="text-xs text-slate-400 block mb-1">作品名称</label><input required type="text" id="work-name" placeholder="请输入作品全称" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
+                <div><label class="text-xs text-slate-400 block mb-1">团队名称</label><input required type="text" id="work-team" placeholder="如：极速磁弦实验室" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
+                <div><label class="text-xs text-slate-400 block mb-1">赛道/领域</label><input required type="text" id="work-category" placeholder="如：量子交通 / 量子计算" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
+                <div><label class="text-xs text-slate-400 block mb-1">项目简介</label><textarea required id="work-desc" placeholder="请输入一句话简介..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150 h-20 resize-none"></textarea></div>
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-500 text-white font-bold py-3 rounded-xl transition duration-150 hover:shadow-neon-blue text-sm flex items-center justify-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  添加作品至决赛池
+                </button>
+              </form>
+            </div>
+          </div>
+          <div class="lg:col-span-2 space-y-3">
+            <div class="flex justify-between items-center text-xs font-semibold text-slate-400 font-mono select-none">
+              <span>已入围决赛作品列表 (LIVE ROW)</span>
+              <span id="works-list-counter">已注册：0 组</span>
+            </div>
+            <div class="space-y-3" id="works-cards-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: STANDARDS -->
+      <div id="tab-standards" class="tab-pane hidden space-y-6">
+        <div><h2 class="text-lg sm:text-xl font-bold text-white tracking-wide">评分维度标准</h2><p class="text-xs text-slate-400 mt-0.5">设定打分维度及权重占比（合计必须为 100%）</p></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl space-y-4 lg:col-span-1 shadow-xl">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">新增评分标准</h3>
+            <form id="form-standard" class="space-y-4" onsubmit="addStandard(event)">
+              <div><label class="text-xs text-slate-400 block mb-1">指标名称</label><input required type="text" id="std-name" placeholder="如：创新力与前沿技术" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
+              <div><label class="text-xs text-slate-400 block mb-1">指标描述与评分细则</label><textarea required id="std-desc" placeholder="简述该维度的核心考量指标..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150 h-20 resize-none"></textarea></div>
+              <div>
+                <div class="flex justify-between items-center mb-1"><label class="text-xs text-slate-400">权重占比</label><span id="std-weight-preview" class="text-xs font-bold text-blue-400 font-mono">40%</span></div>
+                <input type="range" id="std-weight" min="5" max="100" step="5" value="40" oninput="document.getElementById('std-weight-preview').innerText = this.value + '%'" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+              </div>
+              <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-500 text-white font-bold py-3 rounded-xl transition duration-150 hover:shadow-neon-blue text-sm flex items-center justify-center gap-2">添加该考量维度</button>
+            </form>
+          </div>
+          <div class="lg:col-span-2 space-y-4">
+            <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex justify-between items-center">
+              <div><span class="text-xs text-slate-400 block font-mono">评分体系累计占比</span><p class="text-sm font-bold text-slate-200 mt-0.5">总分占比必须配平至 100% 后方可发布</p></div>
+              <div class="text-right"><span id="std-cumulative-gauge" class="text-3xl font-black font-mono text-rose-500">0%</span><span class="text-xs text-slate-500 font-mono block">目标：100%</span></div>
+            </div>
+            <div class="space-y-3" id="standards-cards-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: JUDGES -->
+      <div id="tab-judges" class="tab-pane hidden space-y-6">
+        <div><h2 class="text-lg sm:text-xl font-bold text-white tracking-wide">评委名单录入</h2><p class="text-xs text-slate-400 mt-0.5">登记评委信息，系统将为每位评委生成专属匿名评分链接</p></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl space-y-4 lg:col-span-1 shadow-xl">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">新增评委</h3>
+            <form id="form-judge" class="space-y-4" onsubmit="addJudge(event)">
+              <div><label class="text-xs text-slate-400 block mb-1">评委称谓</label><input required type="text" id="judge-name" placeholder="如：张伟 / 1号评委(金沙资本)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
+              <div><label class="text-xs text-slate-400 block mb-1">席位号 (可选)</label><input type="text" id="judge-seat" placeholder="如：A08" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1">评委等级 <span class="text-slate-600">(决定个人评分权重)</span></label>
+                <div class="grid grid-cols-3 gap-2" id="judge-level-group">
+                  <button type="button" data-level="expert" onclick="selectJudgeLevel('expert')" class="level-btn py-2.5 rounded-xl border text-xs font-bold transition">
+                    <div>专家</div><div class="text-[10px] font-mono opacity-80">×1.5</div>
+                  </button>
+                  <button type="button" data-level="senior" onclick="selectJudgeLevel('senior')" class="level-btn py-2.5 rounded-xl border text-xs font-bold transition">
+                    <div>资深</div><div class="text-[10px] font-mono opacity-80">×1.2</div>
+                  </button>
+                  <button type="button" data-level="normal" onclick="selectJudgeLevel('normal')" class="level-btn py-2.5 rounded-xl border text-xs font-bold transition">
+                    <div>普通</div><div class="text-[10px] font-mono opacity-80">×1.0</div>
+                  </button>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">提示：评委超过 5 位时，将自动去掉一个最高分与一个最低分（按加权分），再对其余评委按等级权重加权平均。</p>
+              </div>
+              <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-500 text-white font-bold py-3 rounded-xl transition duration-150 hover:shadow-neon-blue text-sm flex items-center justify-center gap-2">添加评委席位</button>
+            </form>
+          </div>
+          <div class="lg:col-span-2 space-y-3">
+            <div class="flex justify-between items-center text-xs font-semibold text-slate-400 font-mono select-none"><span>评委名单与专属评分链接</span><span id="judges-list-counter">已注册：0 位</span></div>
+            <div class="space-y-3" id="judges-cards-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: SUMMARY -->
+      <div id="tab-summary" class="tab-pane hidden space-y-6">
+        <div><h2 class="text-lg sm:text-xl font-bold text-white tracking-wide">赛前终极检查与发布</h2><p class="text-xs text-slate-400 mt-0.5">确认配置配平后，生成评委评分链接与大屏实时链接</p></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-1 space-y-4">
+            <div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl shadow-xl space-y-4">
+              <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">赛项体检清单</h3>
+              <div class="space-y-3">
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-900" id="checklist-item-works"><span class="text-xs text-slate-300">入围作品数量 &gt;= 3</span><span class="text-xs font-bold font-mono text-rose-500">不通过</span></div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-900" id="checklist-item-weights"><span class="text-xs text-slate-300">指标占比累加 = 100%</span><span class="text-xs font-bold font-mono text-rose-500">不通过</span></div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-900" id="checklist-item-judges"><span class="text-xs text-slate-300">至少 1 位评委</span><span class="text-xs font-bold font-mono text-rose-500">不通过</span></div>
+              </div>
+            </div>
+            <button onclick="publishActivity()" id="btn-publish" class="w-full py-4 rounded-2xl font-black tracking-widest text-sm text-center transition-all duration-300 bg-slate-900 border border-slate-800 text-slate-500 cursor-not-allowed select-none" disabled>🛑 限制：请配平上述指标清单</button>
+          </div>
+          <div class="lg:col-span-2 space-y-4" id="publish-links-area">
+            <div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl">
+              <p class="text-xs text-slate-500 text-center py-10">尚未发布。完成配平后点击左侧按钮，将在此生成评委评分链接与大屏链接。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- 新建大赛 Modal -->
+  <div id="new-comp-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4">
+      <h3 class="text-lg font-bold text-white">新建评分大赛</h3>
+      <div><label class="text-xs text-slate-400 block mb-1">大赛名称</label><input type="text" id="new-comp-name" placeholder="如：2026 全球未来科技创新大赛 · 决赛现场" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"></div>
+      <div><label class="text-xs text-slate-400 block mb-1">大赛描述 (可选)</label><textarea id="new-comp-desc" placeholder="大赛简介..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition h-20 resize-none"></textarea></div>
+      <div class="flex gap-3 justify-end pt-2">
+        <button onclick="closeNewCompModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">取消</button>
+        <button onclick="createCompetition()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-500 text-white text-xs font-extrabold hover:shadow-neon-blue transition">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============ 全局状态 ============
+    let currentComp = null;       // 当前选中的大赛对象
+    let compDetail = null;        // 当前大赛的完整详情 {competition, works, standards, judges}
+
+    const API = (u, opt) => fetch(u, { headers: { 'Content-Type': 'application/json' }, ...opt }).then(r => r.json());
+    const apiPost = (u, body) => API(u, { method: 'POST', body: JSON.stringify(body || {}) });
+    const apiPut = (u, body) => API(u, { method: 'PUT', body: JSON.stringify(body || {}) });
+    const apiDel = (u) => API(u, { method: 'DELETE' });
+
+    // ============ 初始化 ============
+    window.addEventListener('DOMContentLoaded', async () => {
+      selectJudgeLevel('normal'); // 默认选中"普通"
+      await loadCompetitions();
+      // 支持 ?id=xxx 直接打开某场
+      const params = new URLSearchParams(location.search);
+      const id = params.get('id');
+      if (id) {
+        const sel = document.getElementById('comp-selector');
+        sel.value = id;
+        onSelectCompetition(id);
+      }
+    });
+
+    async function loadCompetitions() {
+      const res = await API('/api/competitions');
+      const sel = document.getElementById('comp-selector');
+      const list = res.data || [];
+      sel.innerHTML = '<option value="">— 选择大赛 —</option>' +
+        list.map(c => `<option value="${c.id}">${c.name} (${c.works_count}作品/${c.judges_count}评委)</option>`).join('');
+    }
+
+    async function onSelectCompetition(id) {
+      if (!id) {
+        document.getElementById('empty-state').classList.remove('hidden');
+        document.getElementById('workspace').classList.add('hidden');
+        currentComp = null; compDetail = null;
+        return;
+      }
+      const res = await API(`/api/competitions/${id}`);
+      if (!res.ok) { pushToast(res.error); return; }
+      compDetail = res.data;
+      currentComp = compDetail.competition;
+      document.getElementById('empty-state').classList.add('hidden');
+      document.getElementById('workspace').classList.remove('hidden');
+      setHeaderTitle(currentComp.name);
+      document.getElementById('comp-name-input').value = currentComp.name;
+      document.getElementById('comp-desc-input').value = currentComp.description || '';
+      switchTab('tab-works');
+    }
+
+    function openNewCompModal() { document.getElementById('new-comp-modal').classList.remove('hidden'); }
+    function closeNewCompModal() { document.getElementById('new-comp-modal').classList.add('hidden'); }
+
+    async function createCompetition() {
+      const name = document.getElementById('new-comp-name').value.trim();
+      if (!name) { pushToast('请输入大赛名称'); return; }
+      const desc = document.getElementById('new-comp-desc').value.trim();
+      const res = await apiPost('/api/competitions', { name, description: desc });
+      if (!res.ok) { pushToast(res.error); return; }
+      closeNewCompModal();
+      document.getElementById('new-comp-name').value = '';
+      document.getElementById('new-comp-desc').value = '';
+      await loadCompetitions();
+      document.getElementById('comp-selector').value = res.data.id;
+      onSelectCompetition(res.data.id);
+      pushToast('🎉 大赛已创建');
+    }
+
+    // 大赛名称/描述自动保存
+    let nameTimer = null;
+    function onCompNameInput(val) {
+      setHeaderTitle(val || '评分活动赛控后台');
+      clearTimeout(nameTimer);
+      nameTimer = setTimeout(async () => {
+        if (!currentComp) return;
+        await apiPut(`/api/competitions/${currentComp.id}`, { name: val, description: document.getElementById('comp-desc-input').value });
+      }, 600);
+    }
+
+    // ============ 评委等级选择 ============
+    let selectedJudgeLevel = 'normal';
+    function selectJudgeLevel(level) {
+      selectedJudgeLevel = level;
+      const styles = {
+        expert:  'border-amber-500 bg-amber-500/15 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.35)]',
+        senior:  'border-indigo-500 bg-indigo-500/15 text-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.35)]',
+        normal:  'border-slate-600 bg-slate-700/40 text-slate-300',
+      };
+      const inactive = 'border-slate-800 bg-slate-950 text-slate-500';
+      document.querySelectorAll('.level-btn').forEach(btn => {
+        const lv = btn.getAttribute('data-level');
+        btn.className = 'level-btn py-2.5 rounded-xl border text-xs font-bold transition ' + (lv === level ? styles[lv] : inactive);
+      });
+    }
+
+    // ============ TAB 切换 ============
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      const pane = document.getElementById(tabId);
+      if (pane) pane.classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = "tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-400 hover:bg-slate-900/40 hover:text-slate-200";
+      });
+      const activeBtn = document.getElementById(`btn-${tabId}`);
+      if (activeBtn) activeBtn.className = "tab-btn active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-gradient-to-r from-blue-600/10 to-transparent border-l-4 border-l-blue-500 text-blue-400";
+      renderAll();
+    }
+
+    // ============ 作品 ============
+    async function addWork(e) {
+      e.preventDefault();
+      const name = document.getElementById('work-name').value.trim();
+      const team = document.getElementById('work-team').value.trim();
+      const category = document.getElementById('work-category').value.trim();
+      const desc = document.getElementById('work-desc').value.trim();
+      const res = await apiPost(`/api/competitions/${currentComp.id}/works`, { name, team, category, description: desc });
+      if (!res.ok) { pushToast(res.error); return; }
+      compDetail.works.push(res.data);
+      document.getElementById('form-work').reset();
+      pushToast(`🎉 已添加作品: ${name}`);
+      renderAll();
+    }
+
+    async function deleteWork(id) {
+      if (!confirm('确认移出该作品？相关评分也会删除。')) return;
+      const res = await apiDel(`/api/works/${id}`);
+      if (!res.ok) { pushToast(res.error); return; }
+      compDetail.works = compDetail.works.filter(w => w.id !== id);
+      pushToast('🗑️ 已移出决赛池');
+      renderAll();
+    }
+
+    // ============ 标准 ============
+    async function addStandard(e) {
+      e.preventDefault();
+      const name = document.getElementById('std-name').value.trim();
+      const desc = document.getElementById('std-desc').value.trim();
+      const weight = parseInt(document.getElementById('std-weight').value);
+      const res = await apiPost(`/api/competitions/${currentComp.id}/standards`, { name, description: desc, weight });
+      if (!res.ok) { pushToast(res.error); return; }
+      compDetail.standards.push(res.data);
+      document.getElementById('form-standard').reset();
+      document.getElementById('std-weight-preview').innerText = '40%';
+      document.getElementById('std-weight').value = 40;
+      pushToast(`🎉 已录入维度: ${name}`);
+      renderAll();
+    }
+
+    async function deleteStandard(id) {
+      if (!confirm('确认删除该评分维度？')) return;
+      const res = await apiDel(`/api/standards/${id}`);
+      if (!res.ok) { pushToast(res.error); return; }
+      compDetail.standards = compDetail.standards.filter(s => s.id !== id);
+      pushToast('🗑️ 已删除维度');
+      renderAll();
+    }
+
+    // ============ 评委 ============
+    async function addJudge(e) {
+      e.preventDefault();
+      const name = document.getElementById('judge-name').value.trim();
+      const seat_no = document.getElementById('judge-seat').value.trim();
+      const res = await apiPost(`/api/competitions/${currentComp.id}/judges`, { name, seat_no, level: selectedJudgeLevel });
+      if (!res.ok) { pushToast(res.error); return; }
+      compDetail.judges.push(res.data);
+      document.getElementById('form-judge').reset();
+      selectedJudgeLevel = 'normal';
+      selectJudgeLevel('normal');
+      pushToast(`🎉 已添加评委: ${name}`);
+      renderAll();
+    }
+
+    async function deleteJudge(id) {
+      if (!confirm('确认删除该评委？其评分也会删除。')) return;
+      const res = await apiDel(`/api/judges/${id}`);
+      if (!res.ok) { pushToast(res.error); return; }
+      compDetail.judges = compDetail.judges.filter(j => j.id !== id);
+      pushToast('🗑️ 已删除评委');
+      renderAll();
+    }
+
+    function copyText(txt) {
+      navigator.clipboard?.writeText(txt).then(() => pushToast('📋 已复制到剪贴板')).catch(() => {
+        const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); pushToast('📋 已复制');
+      });
+    }
+
+    // ============ 渲染 ============
+    function renderAll() {
+      if (!compDetail) return;
+      const { works, standards, judges } = compDetail;
+
+      // 作品
+      const wc = document.getElementById('works-cards-container');
+      wc.innerHTML = works.length === 0
+        ? `<div class="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-10 text-center select-none text-slate-500">暂无入围作品，请在左侧表单录入</div>`
+        : works.map((w, idx) => `
+          <div class="bg-slate-900/40 hover:bg-slate-900/70 border border-slate-900 hover:border-slate-800 p-4 rounded-xl flex justify-between items-start transition duration-150 gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-900/20 text-blue-400 font-bold font-mono border border-blue-500/20 flex items-center justify-center">#${idx+1}</div>
+              <div>
+                <h4 class="font-extrabold text-slate-100 text-sm tracking-wide flex items-center gap-2">${escapeHtml(w.name)} <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">${escapeHtml(w.category)}</span></h4>
+                <p class="text-xs text-slate-400 font-medium mt-0.5">${escapeHtml(w.team)} · <span class="text-[10px] text-slate-500">${escapeHtml(w.description||'')}</span></p>
+              </div>
+            </div>
+            <button onclick="deleteWork(${w.id})" class="text-xs font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-2.5 py-1.5 rounded-lg transition duration-150 flex-shrink-0">移出决赛</button>
+          </div>`).join('');
+      document.getElementById('works-list-counter').innerText = `已注册：${works.length} 组`;
+
+      // 标准
+      const totalWeight = standards.reduce((a, b) => a + b.weight, 0);
+      const sc = document.getElementById('standards-cards-container');
+      sc.innerHTML = standards.length === 0
+        ? `<div class="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-8 text-center text-slate-500">当前尚未设置指标，总计必须配平至 100%</div>`
+        : standards.map(s => `
+          <div class="bg-slate-900/40 border border-slate-900 p-4 rounded-xl flex justify-between items-start gap-4">
+            <div class="flex-grow">
+              <div class="flex justify-between items-center mb-1.5"><h4 class="font-bold text-slate-200 text-sm flex items-center gap-2"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>${escapeHtml(s.name)}</h4><span class="text-sm font-black font-mono text-blue-400">${s.weight}%</span></div>
+              <p class="text-xs text-slate-400 leading-relaxed">${escapeHtml(s.description||'')}</p>
+            </div>
+            <button onclick="deleteStandard(${s.id})" class="text-xs font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-2.5 py-1.5 rounded-lg transition duration-150 flex-shrink-0">删除维度</button>
+          </div>`).join('');
+      const gauge = document.getElementById('std-cumulative-gauge');
+      gauge.innerText = `${totalWeight}%`;
+      gauge.className = totalWeight === 100 ? "text-3xl font-black font-mono text-emerald-400 drop-shadow-[0_0_8px_#10b981]" : "text-3xl font-black font-mono text-rose-500";
+
+      // 评委
+      const jc = document.getElementById('judges-cards-container');
+      jc.innerHTML = judges.length === 0
+        ? `<div class="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-8 text-center text-slate-500">暂无评委，请在左侧添加</div>`
+        : judges.map((j, idx) => {
+            const link = `${location.origin}/j/${j.access_token}`;
+            const lvl = levelBadge(j.level);
+            return `
+            <div class="bg-slate-900/40 border border-slate-900 p-4 rounded-xl flex justify-between items-start gap-4">
+              <div class="flex-grow min-w-0">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                  <div class="w-8 h-8 rounded-lg bg-indigo-900/20 text-indigo-400 font-bold font-mono border border-indigo-500/20 flex items-center justify-center text-xs">${idx+1}</div>
+                  <h4 class="font-bold text-slate-200 text-sm">${escapeHtml(j.name)} ${j.seat_no ? `<span class="text-[10px] text-slate-500 font-mono">· ${escapeHtml(j.seat_no)}</span>` : ''}</h4>
+                  ${lvl}
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <code class="text-[10px] text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-1 rounded font-mono truncate flex-grow">${link}</code>
+                  <button onclick="copyText('${link}')" class="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">复制</button>
+                  <a href="${link}" target="_blank" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">打开</a>
+                </div>
+              </div>
+              <button onclick="deleteJudge(${j.id})" class="text-xs font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-2.5 py-1.5 rounded-lg transition duration-150 flex-shrink-0">删除</button>
+            </div>`;
+          }).join('');
+      document.getElementById('judges-list-counter').innerText = `已注册：${judges.length} 位`;
+
+      // 侧栏统计
+      document.getElementById('stat-works-count').innerText = `${works.length} 组`;
+      document.getElementById('stat-standards-weight').innerText = `${totalWeight}%`;
+      document.getElementById('stat-judges-count').innerText = `${judges.length} 位`;
+
+      // 发布清单
+      validateLaunchChecklist(totalWeight);
+      // 若已发布，渲染链接
+      renderPublishLinks();
+    }
+
+    function validateLaunchChecklist(totalWeight) {
+      const { works, judges } = compDetail;
+      const isWorksOk = works.length >= 3;
+      const isWeightsOk = totalWeight === 100;
+      const isJudgesOk = judges.length >= 1;
+      const set = (id, label, ok, okText, failText) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<span class="text-xs text-slate-300">${label}</span> <span class="text-xs font-bold font-mono ${ok ? 'text-emerald-400' : 'text-rose-500'}">${ok ? okText : failText}</span>`;
+      };
+      set('checklist-item-works', `入围作品数量 &gt;= 3 (当前 ${works.length})`, isWorksOk, '✓ 通过', '不通过');
+      set('checklist-item-weights', `指标占比累加 = 100% (当前 ${totalWeight}%)`, isWeightsOk, '✓ 配平', '未配平');
+      set('checklist-item-judges', `评委数量 &gt;= 1 (当前 ${judges.length})`, isJudgesOk, '✓ 通过', '不通过');
+
+      const btn = document.getElementById('btn-publish');
+      const allOk = isWorksOk && isWeightsOk && isJudgesOk;
+      if (allOk) {
+        btn.disabled = false;
+        btn.className = "w-full py-4 rounded-2xl font-black tracking-widest text-sm text-center transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-slate-950 shadow-neon-emerald cursor-pointer hover:scale-[1.01]";
+        btn.innerHTML = "🚀 全线配平！发布评分活动";
+      } else {
+        btn.disabled = true;
+        btn.className = "w-full py-4 rounded-2xl font-black tracking-widest text-sm text-center transition-all duration-300 bg-slate-900 border border-slate-800 text-slate-500 cursor-not-allowed select-none";
+        btn.innerHTML = "🛑 限制：请配平上述指标清单";
+      }
+    }
+
+    function renderPublishLinks() {
+      const area = document.getElementById('publish-links-area');
+      if (!currentComp.share_token) {
+        area.innerHTML = `<div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl"><p class="text-xs text-slate-500 text-center py-10">尚未发布。完成配平后点击左侧按钮，将在此生成评委评分链接与大屏链接。</p></div>`;
+        return;
+      }
+      const shareUrl = `${location.origin}/j/${currentComp.share_token}`;
+      const screenUrl = `${location.origin}/s/${currentComp.screen_token}`;
+      const adminUrl = `${location.origin}/admin.html?id=${currentComp.id}`;
+      area.innerHTML = `
+        <div class="bg-slate-900/50 border border-emerald-500/30 p-5 rounded-2xl space-y-4">
+          <div class="flex items-center gap-2"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span><span class="text-xs font-bold text-emerald-400 font-mono uppercase tracking-widest">已发布 · ACTIVE</span></div>
+          <div class="space-y-3">
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">📱 评委评分入口 (分享给所有评委)</div>
+              <div class="flex items-center gap-2"><code class="text-xs text-emerald-400 font-mono flex-grow truncate">${shareUrl}</code><button onclick="copyText('${shareUrl}')" class="text-[10px] font-bold text-blue-400 px-2 py-1 rounded bg-slate-800">复制</button><a href="${shareUrl}" target="_blank" class="text-[10px] font-bold text-emerald-400 px-2 py-1 rounded bg-slate-800">打开</a></div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">🖥️ 大屏实时排名 (投放到现场屏幕)</div>
+              <div class="flex items-center gap-2"><code class="text-xs text-cyan-400 font-mono flex-grow truncate">${screenUrl}</code><button onclick="copyText('${screenUrl}')" class="text-[10px] font-bold text-blue-400 px-2 py-1 rounded bg-slate-800">复制</button><a href="${screenUrl}" target="_blank" class="text-[10px] font-bold text-cyan-400 px-2 py-1 rounded bg-slate-800">打开</a></div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">⚙️ 后台管理</div>
+              <div class="flex items-center gap-2"><code class="text-xs text-slate-400 font-mono flex-grow truncate">${adminUrl}</code><button onclick="copyText('${adminUrl}')" class="text-[10px] font-bold text-blue-400 px-2 py-1 rounded bg-slate-800">复制</button></div>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-500 pt-2 border-t border-slate-800">提示：每位评委也有独立的专属评分链接，可在「评委名单录入」标签页中查看与复制。</div>
+        </div>`;
+    }
+
+    async function publishActivity() {
+      const res = await apiPost(`/api/competitions/${currentComp.id}/publish`);
+      if (!res.ok) { pushToast(res.error); return; }
+      currentComp = res.data.competition;
+      pushToast('🚀 评分活动已发布！链接已生成');
+      renderAll();
+    }
+
+    // ============ 工具 ============
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // 大赛名称: 单行显示, 名称越长字号越小, 避免换行或被截断; 悬停可见全名
+    function setHeaderTitle(name) {
+      const el = document.getElementById('header-title');
+      if (!el) return;
+      el.innerText = name;
+      el.setAttribute('title', name);
+      const len = (name || '').length;
+      let cls = 'lg:text-[1.85rem] tracking-[0.12em]';
+      if (len > 18) cls = 'lg:text-2xl tracking-[0.1em]';
+      if (len > 26) cls = 'lg:text-xl tracking-[0.08em]';
+      if (len > 34) cls = 'lg:text-lg tracking-[0.06em]';
+      el.className = el.className
+        .replace(/text-xl|text-2xl|text-lg|sm:text-2xl|lg:text-\[1\.85rem\]|tracking-\[0?\.\d+em\]/g, '')
+        + ' ' + cls;
+    }
+
+    // 等级 -> 标签 HTML
+    function levelBadge(level) {
+      const map = {
+        expert: { label: '专家 ×1.5', cls: 'bg-amber-500/15 border-amber-500/40 text-amber-300' },
+        senior: { label: '资深 ×1.2', cls: 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300' },
+        normal: { label: '普通 ×1.0', cls: 'bg-slate-700/40 border-slate-600 text-slate-300' },
+      };
+      const m = map[level] || map.normal;
+      return `<span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${m.cls}">${m.label}</span>`;
+    }
+
+    // 一键生成样例大赛
+    async function seedDemo() {
+      if (!confirm('将生成一份样例大赛（6 组作品 + 3 项标准 + 7 位含等级的评委）。确认继续？')) return;
+      const res = await apiPost('/api/seed/demo', {});
+      if (!res.ok) { pushToast(res.error); return; }
+      await loadCompetitions();
+      document.getElementById('comp-selector').value = res.data.competition_id;
+      onSelectCompetition(res.data.competition_id);
+      pushToast('⚡ 样例大赛已生成，可在「概览检查发布」中发布');
+    }
+
+    function pushToast(message) {
+      const t = document.createElement('div');
+      t.className = "fixed bottom-6 left-6 z-50 bg-slate-900 border border-blue-500/30 text-blue-400 font-semibold px-5 py-3 rounded-xl shadow-neon-blue text-xs transition duration-300 transform translate-y-10 opacity-0";
+      t.innerText = message;
+      document.body.appendChild(t);
+      const g = window.gsap;
+      const anim = g ? g.to.bind(g) : null;
+      t.style.transition = 'all 0.35s ease';
+      t.style.transform = 'translateY(0)'; t.style.opacity = '1';
+      setTimeout(() => { t.style.transform = 'translateY(20px)'; t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3000);
+    }
+  </script>
+</body>
+</html>
