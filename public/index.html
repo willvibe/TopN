@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TopN 评分系统</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.loli.net/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .bg-grid { background-size:40px 40px; background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px); }
+    .nebula { filter:blur(140px); background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 75%); }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen relative bg-grid flex items-center justify-center p-6">
+  <div class="absolute top-10 left-10 w-[600px] h-[600px] nebula pointer-events-none -z-10"></div>
+  <div class="absolute bottom-10 right-10 w-[600px] h-[600px] nebula pointer-events-none -z-10"></div>
+
+  <div class="max-w-3xl w-full text-center">
+    <div class="inline-flex items-center gap-2 bg-slate-900/60 px-4 py-2 rounded-xl border border-slate-800 mb-6">
+      <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+      <span class="text-xs font-mono font-bold tracking-widest text-blue-400">NEBULA CONTROL v2.6</span>
+    </div>
+    <h1 class="text-4xl sm:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent mb-4">
+      🛰️ TopN 评分系统
+    </h1>
+    <p class="text-slate-400 mb-12 max-w-xl mx-auto">
+      为各类比赛发起评分活动：后台录入比赛与作品、评委通过专属链接打分、大屏实时展示评委评分明细与作品排名
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <a href="admin.html" class="group bg-slate-900/50 hover:bg-slate-900/80 border border-slate-800 hover:border-blue-500/40 rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02]">
+        <div class="text-4xl mb-3">⚙️</div>
+        <h3 class="font-bold text-white text-lg mb-1">赛控后台</h3>
+        <p class="text-xs text-slate-400">录入比赛、作品、评分标准与评委，发布评分活动并生成链接</p>
+        <span class="inline-block mt-4 text-xs font-bold text-blue-400 group-hover:translate-x-1 transition">进入 ➜</span>
+      </a>
+      <div class="bg-slate-900/30 border border-slate-800 rounded-2xl p-6 opacity-80">
+        <div class="text-4xl mb-3">📱</div>
+        <h3 class="font-bold text-white text-lg mb-1">评委评分</h3>
+        <p class="text-xs text-slate-400">评委通过后台生成的专属评分链接进入（移动端友好）</p>
+        <span class="inline-block mt-4 text-xs font-bold text-slate-500">由后台发布生成</span>
+      </div>
+      <div class="bg-slate-900/30 border border-slate-800 rounded-2xl p-6 opacity-80">
+        <div class="text-4xl mb-3">🖥️</div>
+        <h3 class="font-bold text-white text-lg mb-1">实时大屏</h3>
+        <p class="text-xs text-slate-400">通过后台生成的大屏链接打开，实时展示评分明细与排名</p>
+        <span class="inline-block mt-4 text-xs font-bold text-slate-500">由后台发布生成</span>
+      </div>
+    </div>
+
+    <div class="mt-12 text-xs text-slate-500">
+      技术栈：Node.js · Express · MySQL · SSE 实时推送 · Tailwind CSS
+    </div>
+  </div>
+</body>
+</html>
