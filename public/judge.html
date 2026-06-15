@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>星云智能 - 决赛评委匿名评分终端</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link href="https://fonts.loli.net/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = { theme: { extend: {
+      fontFamily: { sans: ['Inter','system-ui','sans-serif'], mono: ['Share Tech Mono','monospace'] },
+      boxShadow: {
+        'neon-blue': '0 0 15px rgba(59,130,246,0.45)',
+        'neon-gold': '0 0 20px rgba(245,158,11,0.55)',
+        'neon-emerald': '0 0 15px rgba(16,185,129,0.4)',
+      }
+    }}}
+  </script>
+  <style>
+    button, input, select { touch-action: manipulation; }
+    .bg-grid { background-size: 30px 30px; background-image: linear-gradient(to right, rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.015) 1px, transparent 1px); }
+    .nebula-1 { filter: blur(100px); background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%); }
+    .nebula-2 { filter: blur(100px); background: radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%); }
+    .view-fade { transition: opacity 0.25s ease, transform 0.25s ease; }
+    .glass-header { background: rgba(3,7,18,0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen relative bg-grid flex flex-col select-none overflow-x-hidden">
+  <div class="absolute top-0 left-0 w-full h-[400px] nebula-1 pointer-events-none -z-10"></div>
+  <div class="absolute bottom-0 right-0 w-full h-[400px] nebula-2 pointer-events-none -z-10"></div>
+
+  <!-- STICKY HEADER -->
+  <header class="sticky top-0 z-40 w-full glass-header border-b border-slate-900 px-4 py-3.5 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981] flex-shrink-0"></span>
+      <span id="header-title" class="text-sm font-bold tracking-wide bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent truncate">星云赛控 · 智能评分终端</span>
+    </div>
+    <div id="header-seat" class="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-lg flex-shrink-0">
+      <span class="text-[10px] text-blue-400 font-mono font-bold tracking-widest uppercase">未登录</span>
+    </div>
+  </header>
+
+  <!-- ============ VIEW 0: 评委选择 (通过 share_token 进入) ============ -->
+  <div id="view-select" class="hidden flex-grow flex flex-col p-4 space-y-4 max-w-md mx-auto w-full pb-10">
+    <div class="bg-slate-900/40 border border-slate-900/80 rounded-2xl p-4 shadow-xl">
+      <h2 class="text-base font-bold text-white">请确认您的评委身份</h2>
+      <p class="text-xs text-slate-400 mt-1">选择您的席位进入评分终端</p>
+    </div>
+    <div id="judges-select-list" class="space-y-2.5"></div>
+  </div>
+
+  <!-- ============ VIEW 1: 作品列表 ============ -->
+  <div id="view-list" class="hidden view-fade flex-grow flex flex-col p-4 space-y-4 max-w-md mx-auto w-full pb-10">
+    <div class="bg-slate-900/40 border border-slate-900/80 rounded-2xl p-4 shadow-xl">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs text-slate-400 font-medium">评分任务完成度</span>
+        <span id="overview-progress-text" class="text-xs font-bold text-blue-400 font-mono">已评 0 / 0 组</span>
+      </div>
+      <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-900/50">
+        <div id="overview-progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-emerald-400 transition-all duration-500" style="width: 0%"></div>
+      </div>
+    </div>
+    <div class="space-y-3.5" id="works-feed-container"></div>
+    <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-[11px] text-slate-400 shadow-lg">
+      <div class="flex items-center gap-2">
+        <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></span>
+        <span id="uplink-message">实时加密通道已就绪，打分将即刻推至大屏</span>
+      </div>
+      <span class="font-mono text-slate-600 text-[10px]">LIVE</span>
+    </div>
+  </div>
+
+  <!-- ============ VIEW 2: 评分详情抽屉 ============ -->
+  <div id="view-scoring" class="hidden view-fade fixed inset-0 z-50 bg-slate-950 flex flex-col">
+    <header class="glass-header border-b border-slate-900 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+      <button onclick="goBackToList()" class="p-2 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-slate-700 active:scale-95 transition flex items-center justify-center text-slate-300">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+      </button>
+      <div class="min-w-0 flex-grow">
+        <span class="text-[10px] text-slate-500 font-mono uppercase tracking-widest block">SCORING PANEL</span>
+        <h3 id="detail-work-name" class="font-extrabold text-white text-base truncate tracking-wide">作品名称</h3>
+      </div>
+    </header>
+
+    <div class="flex-grow overflow-y-auto p-4 space-y-6 pb-40">
+      <div class="bg-slate-900/30 border border-slate-900 p-4 rounded-2xl space-y-1">
+        <div class="flex items-center gap-1.5 mb-1">
+          <span id="detail-work-cat" class="text-[9px] bg-blue-500/10 border border-blue-500/25 text-blue-400 font-mono font-bold px-2 py-0.5 rounded">类别</span>
+          <span id="detail-work-team" class="text-[10px] text-slate-400 font-semibold truncate">团队</span>
+        </div>
+        <p id="detail-work-desc" class="text-xs text-slate-500 leading-relaxed">作品简介</p>
+      </div>
+      <div class="space-y-6" id="sliders-container"></div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 p-4 bg-slate-950 border-t border-slate-900 flex flex-col gap-3 shadow-xl">
+      <div class="flex items-center justify-between bg-slate-900/50 border border-slate-900 rounded-xl p-3 flex-shrink-0 relative overflow-hidden">
+        <div class="relative z-10">
+          <span class="text-[10px] text-slate-500 uppercase tracking-widest font-mono">当前加权合并分</span>
+          <p class="text-2xl font-black font-mono text-white mt-0.5" id="weighted-score-preview">0.00 <span class="text-xs text-slate-500 font-normal">/ 10.00</span></p>
+        </div>
+        <div class="text-right relative z-10">
+          <span class="text-[9px] bg-blue-500/10 border border-blue-500/25 text-blue-400 px-2 py-0.5 rounded font-mono font-black">指标全权重已配平</span>
+        </div>
+        <div id="weighted-progress-bar" class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 transition-all duration-300" style="width: 0%"></div>
+      </div>
+      <div class="flex gap-2">
+        <button id="btn-submit-scoring" onclick="executeSubmission()" class="w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-slate-950 font-black py-4 rounded-xl text-center shadow-neon-emerald hover:scale-[1.01] active:scale-[0.98] transition-all duration-150 text-sm tracking-widest flex items-center justify-center gap-2">⚡ 确认首次打分提交</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 错误/空态 -->
+  <div id="view-error" class="hidden flex-grow flex items-center justify-center p-6">
+    <div class="text-center text-slate-500 max-w-sm">
+      <div class="text-5xl mb-4">🛰️</div>
+      <p id="error-msg" class="text-sm">链接无效或大赛尚未发布</p>
+    </div>
+  </div>
+
+  <script>
+    // GSAP 兜底
+    if (typeof gsap === 'undefined') {
+      window.gsap = {
+        to(t,v){const e=typeof t==='string'?document.querySelectorAll(t):(t&&t.length?t:[t]);(e||[]).forEach&&e.forEach(el=>{if(!el||!el.style)return;el.style.transition=`all ${v.duration||0.35}s ease`;if(v.x!==undefined)el.style.transform=`translateX(${v.x})`;if(v.y!==undefined)el.style.transform=`translateY(${v.y}px)`;if(v.opacity!==undefined)el.style.opacity=v.opacity;if(v.onComplete)setTimeout(v.onComplete,(v.duration||0.35)*1000);});},
+        fromTo(t,f,v){this.to(t,Object.assign({},f,v));}
+      };
+    }
+
+    // ============ 全局状态 ============
+    let judgeInfo = null;     // {judge, competition}
+    let dashboard = null;     // 评委视角的全部数据
+    let selectedWorkId = null;
+    let workingScores = {};   // 当前正在编辑的各维度分 (临时, {stdId: value})
+
+    // URL 解析: /j/:token  -> token 可能是 share_token 或 access_token
+    const PATH_TOKEN = location.pathname.split('/').pop();
+
+    // ============ 初始化 ============
+    window.addEventListener('DOMContentLoaded', init);
+
+    async function init() {
+      // 1) 先尝试当 access_token
+      const res1 = await fetch(`/api/judge/by-token/${PATH_TOKEN}`).then(r => r.json()).catch(() => null);
+      if (res1 && res1.ok) {
+        enterAsJudge(res1.data);
+        return;
+      }
+      // 2) 再尝试当 share_token：列出该大赛评委，让用户选
+      const res2 = await fetch(`/api/competitions/by-share/${PATH_TOKEN}`).then(r => r.json()).catch(() => null);
+      if (res2 && res2.ok) {
+        showJudgeSelection(res2.data);
+        return;
+      }
+      // 失败
+      document.getElementById('view-error').classList.remove('hidden');
+      document.getElementById('error-msg').innerText = (res1 && res1.error) || '链接无效或大赛尚未发布';
+    }
+
+    // 直接以某评委身份进入
+    async function enterAsJudge(info) {
+      judgeInfo = info;
+      document.getElementById('header-title').innerText = info.competition.name;
+      document.getElementById('header-seat').innerHTML = `<span class="text-[10px] text-blue-400 font-mono font-bold tracking-widest uppercase">${escapeHtml(info.judge.name)}${info.judge.seat_no ? ' · ' + escapeHtml(info.judge.seat_no) : ''}</span>`;
+      await loadDashboard();
+      showView('view-list');
+    }
+
+    // 通过 share_token 进入，展示评委选择列表
+    function showJudgeSelection(data) {
+      const { competition, judges } = data;
+      document.getElementById('header-title').innerText = competition.name;
+      document.getElementById('view-select').classList.remove('hidden');
+      const list = document.getElementById('judges-select-list');
+      if (!judges.length) {
+        list.innerHTML = `<div class="bg-slate-900/40 border border-slate-900 rounded-2xl p-8 text-center text-slate-500 text-sm">该大赛尚未录入评委</div>`;
+        return;
+      }
+      list.innerHTML = judges.map(j => `
+        <button onclick="selectJudgeByToken('${j.access_token}')" class="w-full text-left bg-slate-900/40 hover:bg-slate-900/70 border border-slate-900 hover:border-blue-500/40 p-4 rounded-2xl flex justify-between items-center transition">
+          <div class="min-w-0">
+            <h4 class="font-bold text-slate-100 text-sm truncate">${escapeHtml(j.name)}</h4>
+            ${j.seat_no ? `<span class="text-[10px] text-slate-500 font-mono">席位：${escapeHtml(j.seat_no)}</span>` : '<span class="text-[10px] text-slate-600">点击进入评分</span>'}
+          </div>
+          <span class="text-blue-400 text-xs font-bold flex-shrink-0">进入 ➜</span>
+        </button>`).join('');
+    }
+
+    async function selectJudgeByToken(accessToken) {
+      const res = await fetch(`/api/judge/by-token/${accessToken}`).then(r => r.json());
+      if (!res.ok) { pushToast(res.error); return; }
+      enterAsJudge(res.data);
+    }
+
+    async function loadDashboard() {
+      const res = await fetch(`/api/judge/${judgeInfo.judge.id}/dashboard`).then(r => r.json());
+      if (!res.ok) { pushToast(res.error); return; }
+      dashboard = res.data;
+      renderWorksList();
+      updateOverviewProgress();
+    }
+
+    function showView(id) {
+      ['view-select','view-list','view-scoring','view-error'].forEach(v => document.getElementById(v).classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    // ============ 作品列表 ============
+    function renderWorksList() {
+      const container = document.getElementById('works-feed-container');
+      container.innerHTML = dashboard.works.map((w, idx) => {
+        const attempt = w.attempt || 0;
+        let statusBadge, borderClass, bgClass, actionBtn;
+        if (attempt === 0) {
+          statusBadge = `<span class="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-full font-bold"><span class="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse"></span>等待打分</span>`;
+          actionBtn = `<button onclick="openScoringDrawer(${w.id})" class="px-3.5 py-2 rounded-xl bg-blue-600 active:scale-95 text-xs font-bold text-white shadow-neon-blue transition">评分 ➜</button>`;
+          borderClass = 'border-slate-900'; bgClass = 'bg-slate-900/40';
+        } else if (attempt === 1) {
+          statusBadge = `<span class="flex items-center gap-1.5 text-[10px] text-emerald-400 bg-emerald-500/5 border border-emerald-500/25 px-2.5 py-1 rounded-full font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></span>已打分 (剩1次修改)</span>`;
+          actionBtn = `<button onclick="openScoringDrawer(${w.id})" class="px-3 py-2 rounded-xl bg-emerald-500 active:scale-95 text-xs font-bold text-slate-950 shadow-neon-emerald transition flex items-center gap-1">修改分值</button>`;
+          borderClass = 'border-emerald-500/25 shadow-neon-emerald'; bgClass = 'bg-emerald-950/5';
+        } else {
+          statusBadge = `<span class="flex items-center gap-1.5 text-[10px] text-amber-500 bg-amber-500/5 border border-amber-500/25 px-2.5 py-1 rounded-full font-bold">🔒 终极锁定 (只读)</span>`;
+          actionBtn = `<button onclick="openScoringDrawer(${w.id})" class="px-3 py-2 rounded-xl bg-slate-900 text-slate-500 border border-slate-800 text-xs font-semibold">查看分值</button>`;
+          borderClass = 'border-amber-500/20'; bgClass = 'bg-slate-900/20 opacity-70';
+        }
+        const final = attempt > 0 ? calcWeighted(w.scores).toFixed(2) : null;
+        return `
+          <div class="border rounded-2xl p-4 flex justify-between items-center transition-all duration-300 gap-4 ${borderClass} ${bgClass}">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span class="text-[9px] font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400 px-1.5 rounded">#0${idx+1}</span>
+                <span class="text-[10px] text-slate-500 font-mono">${escapeHtml(w.category||'')}</span>
+                ${statusBadge}
+              </div>
+              <h4 class="font-extrabold text-slate-100 text-sm tracking-wide truncate">${escapeHtml(w.name)}</h4>
+              <p class="text-xs text-slate-400 truncate mt-0.5">${escapeHtml(w.team||'')}</p>
+            </div>
+            <div class="flex flex-col items-end gap-2 flex-shrink-0">
+              ${final !== null ? `<div class="font-mono text-base font-extrabold text-blue-400">${final}分</div>` : `<div class="font-mono text-base font-medium text-slate-700">— 分</div>`}
+              ${actionBtn}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // 按权重计算加权分
+    function calcWeighted(scores) {
+      if (!scores || !dashboard) return 0;
+      let sum = 0, weightSum = 0;
+      for (const s of dashboard.standards) {
+        const v = scores[s.id];
+        if (v === undefined || v === null) continue;
+        sum += Number(v) * s.weight;
+        weightSum += s.weight;
+      }
+      return weightSum === 0 ? 0 : sum / weightSum;
+    }
+
+    function updateOverviewProgress() {
+      const total = dashboard.works.length;
+      const completed = dashboard.works.filter(w => w.attempt > 0).length;
+      document.getElementById('overview-progress-text').innerText = `已评 ${completed} / ${total} 组`;
+      document.getElementById('overview-progress-bar').style.width = total ? `${(completed/total)*100}%` : '0%';
+    }
+
+    // ============ 评分抽屉 ============
+    function openScoringDrawer(workId) {
+      playSound('success');
+      selectedWorkId = workId;
+      const w = dashboard.works.find(x => x.id === workId);
+      if (!w) return;
+      document.getElementById('detail-work-name').innerText = w.name;
+      document.getElementById('detail-work-cat').innerText = w.category || '—';
+      document.getElementById('detail-work-team').innerText = `团队：${w.team || '—'}`;
+      document.getElementById('detail-work-desc').innerText = w.description || '';
+
+      // 用作品的已有评分初始化 workingScores
+      workingScores = {};
+      for (const s of dashboard.standards) workingScores[s.id] = w.scores[s.id] !== undefined ? Number(w.scores[s.id]) : 0.0;
+
+      renderScoringSliders(workId);
+      recalculateWeightedTotal();
+
+      const viewList = document.getElementById('view-list');
+      const viewScoring = document.getElementById('view-scoring');
+      viewScoring.classList.remove('hidden');
+      gsap.fromTo(viewScoring, { x: '100%' }, { x: '0%', duration: 0.35, ease: 'power3.out' });
+      document.body.style.overflow = 'hidden';
+    }
+
+    function goBackToList() {
+      playSound('tick');
+      const viewScoring = document.getElementById('view-scoring');
+      gsap.to(viewScoring, { x: '100%', duration: 0.3, ease: 'power3.in', onComplete: () => {
+        viewScoring.classList.add('hidden');
+        document.body.style.overflow = '';
+        renderWorksList();
+        updateOverviewProgress();
+      }});
+    }
+
+    function renderScoringSliders(workId) {
+      const container = document.getElementById('sliders-container');
+      const w = dashboard.works.find(x => x.id === workId);
+      const isLocked = w.attempt >= 2;
+      container.innerHTML = dashboard.standards.map(s => {
+        const score = workingScores[s.id] || 0;
+        return `
+          <div class="space-y-2 p-4 rounded-2xl bg-slate-900/50 border border-slate-900">
+            <div class="flex justify-between items-center mb-1">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></span>
+                <span class="text-xs font-extrabold text-slate-300 truncate">${escapeHtml(s.name)} (${s.weight}%)</span>
+              </div>
+              <span id="label-score-std-${s.id}" class="text-sm font-black font-mono text-blue-400 flex-shrink-0">${score.toFixed(1)}分</span>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-normal mb-3">${escapeHtml(s.description||'')}</p>
+            <div class="flex items-center gap-3">
+              <button onclick="adjustFineScore(${s.id}, -0.1)" ${isLocked?'disabled':''} class="w-10 h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-sm font-bold flex items-center justify-center font-mono active:scale-90 transition disabled:opacity-30 disabled:pointer-events-none text-slate-400">-</button>
+              <input type="range" id="slider-std-${s.id}" min="0.0" max="10.0" step="0.1" value="${score}" ${isLocked?'disabled':''} oninput="syncSliderVal(${s.id}, this.value)" class="flex-grow h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-blue-500 disabled:opacity-40">
+              <button onclick="adjustFineScore(${s.id}, 0.1)" ${isLocked?'disabled':''} class="w-10 h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-sm font-bold flex items-center justify-center font-mono active:scale-90 transition disabled:opacity-30 disabled:pointer-events-none text-slate-400">+</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      const submitBtn = document.getElementById('btn-submit-scoring');
+      if (w.attempt === 0) {
+        submitBtn.className = "w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-slate-950 font-black py-4 rounded-xl text-center shadow-neon-emerald hover:scale-[1.01] active:scale-[0.98] transition-all duration-150 text-sm tracking-widest flex items-center justify-center gap-2";
+        submitBtn.innerHTML = `⚡ 确认并首次提交评分`;
+        submitBtn.disabled = false;
+      } else if (w.attempt === 1) {
+        submitBtn.className = "w-full bg-gradient-to-r from-amber-500 via-orange-400 to-amber-500 text-slate-950 font-black py-4 rounded-xl text-center shadow-neon-gold active:scale-[0.98] transition-all duration-150 text-sm tracking-widest flex items-center justify-center gap-2";
+        submitBtn.innerHTML = `⚠️ 确认修改此分数 (仅此最后一次机会)`;
+        submitBtn.disabled = false;
+      } else {
+        submitBtn.className = "w-full bg-slate-900 border border-slate-800 text-slate-500 font-bold py-4 rounded-xl text-center cursor-not-allowed text-xs";
+        submitBtn.innerHTML = `🔒 评分已终极锁定，修改机会已用完`;
+        submitBtn.disabled = true;
+      }
+    }
+
+    function syncSliderVal(stdId, value) {
+      const val = parseFloat(value);
+      workingScores[stdId] = val;
+      const label = document.getElementById(`label-score-std-${stdId}`);
+      if (label) label.innerText = `${val.toFixed(1)}分`;
+      recalculateWeightedTotal();
+      playSound('tick');
+    }
+
+    function adjustFineScore(stdId, offset) {
+      const slider = document.getElementById(`slider-std-${stdId}`);
+      if (!slider) return;
+      let val = parseFloat(slider.value) + offset;
+      if (val < 0.0) val = 0.0;
+      if (val > 10.0) val = 10.0;
+      slider.value = val;
+      syncSliderVal(stdId, val);
+    }
+
+    function recalculateWeightedTotal() {
+      let sum = 0;
+      for (const s of dashboard.standards) sum += (workingScores[s.id] || 0) * s.weight / 100;
+      document.getElementById('weighted-score-preview').innerHTML = `${sum.toFixed(2)} <span class="text-xs text-slate-500 font-normal">/ 10.00</span>`;
+      document.getElementById('weighted-progress-bar').style.width = `${sum * 10}%`;
+    }
+
+    async function executeSubmission() {
+      const w = dashboard.works.find(x => x.id === selectedWorkId);
+      if (!w || w.attempt >= 2) return;
+      // 构造 scores payload
+      const scores = {};
+      for (const s of dashboard.standards) scores[s.id] = workingScores[s.id];
+      playSound('success');
+      const res = await fetch(`/api/judge/${judgeInfo.judge.id}/score`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ work_id: selectedWorkId, scores })
+      }).then(r => r.json());
+      if (!res.ok) { pushToast(res.error || '提交失败'); return; }
+      // 更新本地状态
+      w.attempt = res.data.attempt;
+      w.scores = { ...scores };
+      pushToast(w.attempt === 1 ? `🎉 首次打分成功！还保留 1 次修改机会` : `🔒 修改成功，该组分值已终极锁定`);
+      setTimeout(() => goBackToList(), 900);
+    }
+
+    // ============ 工具 ============
+    function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+    function playSound(type) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        if (type === 'success') {
+          osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+          osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+          osc.start(); osc.stop(ctx.currentTime + 0.3);
+        } else if (type === 'tick') {
+          osc.frequency.setValueAtTime(800, ctx.currentTime);
+          gain.gain.setValueAtTime(0.015, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
+          osc.start(); osc.stop(ctx.currentTime + 0.05);
+        }
+      } catch (e) {}
+    }
+
+    function pushToast(msg) {
+      const t = document.createElement('div');
+      t.className = "fixed bottom-10 left-4 right-4 z-50 bg-slate-900 border border-blue-500/20 text-blue-400 font-bold px-4 py-3.5 rounded-xl shadow-neon-blue text-xs text-center transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-none";
+      t.innerText = msg;
+      document.body.appendChild(t);
+      gsap.to(t, { y: 0, opacity: 1, duration: 0.35, onComplete: () => {
+        setTimeout(() => gsap.to(t, { y: 20, opacity: 0, duration: 0.35, onComplete: () => t.remove() }), 3200);
+      }});
+    }
+  </script>
+</body>
+</html>
