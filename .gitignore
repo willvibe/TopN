@@ -1,0 +1,24 @@
+# 依赖
+node_modules/
+
+# 环境变量 (含数据库凭证, 切勿提交)
+.env
+.env.local
+
+# 系统/编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+npm-debug.log*
+
+# 原始参考页面 (本地保留, 不入仓库)
+决赛大屏实时排名页面.html
+评分活动设置发布页面.html
+评委评分页面.html
+
+# 临时文件
+_check.js
+verify.js
+fill_scores.js
