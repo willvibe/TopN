@@ -1,0 +1,15 @@
+{
+  "name": "topn-scoring",
+  "version": "1.0.0",
+  "description": "比赛评分系统 - 后台录入、评委评分、大屏实时排名",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "init-db": "node server/init-db.js",
+    "seed": "node server/seed.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0"
+  }
+}
