@@ -14,7 +14,7 @@ const { aggregateWork } = require('./scoring');
 const { seedDemo } = require('./seed');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5678;
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
