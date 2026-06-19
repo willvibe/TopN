@@ -84,7 +84,7 @@ npm run seed
 npm start
 ```
 
-打开 http://localhost:3000 进入入口，或直接访问 http://localhost:3000/admin.html 开始录入。
+打开 http://localhost:5678 进入入口，或直接访问 http://localhost:5678/admin.html 开始录入。
 
 ## 📖 使用流程
 
