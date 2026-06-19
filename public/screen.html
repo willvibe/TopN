@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>星云智能 - 决赛实时大屏</title>
+  <title>TopN - 决赛实时大屏</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdn.bootcdn.net/ajax/libs/canvas-confetti/1.6.0/confetti.browser.min.js"></script>
@@ -44,7 +44,7 @@
     <div class="flex items-center gap-3 xl:w-1/4">
       <div class="flex items-center gap-2 bg-slate-900/60 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-800">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]"></span>
-        <span class="text-xs font-mono font-bold tracking-widest text-emerald-400">NEBULA SYSTEM LIVE</span>
+        <span class="text-xs font-mono font-bold tracking-widest text-emerald-400">TOPN SYSTEM LIVE</span>
       </div>
     </div>
 
@@ -54,15 +54,18 @@
         <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-500/80"></div>
         <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-500/80"></div>
         <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-500/80"></div>
-        <h1 id="header-title" class="text-2xl sm:text-3xl lg:text-4xl font-black tracking-[0.15em] bg-gradient-to-r from-white via-cyan-100 via-blue-200 to-slate-400 bg-clip-text text-transparent select-none py-1 leading-normal filter drop-shadow-[0_0_20px_rgba(59,130,246,0.65)] whitespace-nowrap overflow-hidden text-ellipsis block max-w-[60vw] xl:max-w-[50vw] mx-auto" title="">
+        <h1 id="header-title" class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-[0.08em] bg-gradient-to-r from-white via-cyan-100 via-blue-200 to-slate-400 bg-clip-text text-transparent select-none py-1 leading-tight filter drop-shadow-[0_0_20px_rgba(59,130,246,0.65)] break-words max-w-[120vw] mx-auto" title="">
           决赛实时大屏
         </h1>
       </div>
     </div>
 
     <div class="flex items-center gap-2.5 justify-end xl:w-1/4 flex-wrap sm:flex-nowrap">
-      <button id="btn-next" title="推进到下一位路演选手" class="bg-slate-900/80 hover:bg-slate-800 active:scale-95 text-xs font-bold py-2.5 px-3.5 rounded-xl border border-slate-800 transition flex items-center gap-1.5 text-blue-400">下一位 ➜</button>
-      <button id="btn-podium" title="展示三甲加冕" class="bg-amber-600/10 hover:bg-amber-600/20 active:scale-95 text-amber-400 border border-amber-500/30 text-xs font-bold py-2.5 px-4 rounded-xl transition">👑 三甲</button>
+      <button id="btn-next" title="推进到下一位路演选手" class="bg-slate-900/80 hover:bg-slate-800 active:scale-95 text-blue-400 py-2.5 px-3 rounded-xl border border-slate-800 transition flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+      </button>
+      <button id="btn-demo" title="30秒模拟全部评委评分过程" class="bg-emerald-600/10 hover:bg-emerald-600/20 active:scale-95 text-emerald-400 border border-emerald-500/30 py-2.5 px-3 rounded-xl transition flex items-center justify-center text-base leading-none">🎬</button>
+      <button id="btn-podium" title="展示三甲加冕" class="bg-amber-600/10 hover:bg-amber-600/20 active:scale-95 text-amber-400 border border-amber-500/30 py-2.5 px-3 rounded-xl transition flex items-center justify-center text-base leading-none">👑</button>
       <button id="btn-reset" title="清空全部评分" class="bg-slate-900/80 hover:text-rose-400 active:scale-95 border border-slate-800 text-slate-400 text-xs font-bold py-2.5 px-3 rounded-xl transition">🔄</button>
       <div class="hidden sm:block w-[1px] h-6 bg-slate-800 mx-1"></div>
       <button onclick="toggleFullscreen()" class="p-2.5 rounded-xl bg-slate-900/80 hover:bg-blue-950/40 active:scale-95 border border-slate-800 hover:border-blue-500/50 hover:shadow-neon-blue transition text-slate-400 hover:text-cyan-400" title="全屏">
@@ -147,12 +150,16 @@
     <div class="absolute inset-0 bg-grid opacity-20 pointer-events-none"></div>
     <div class="absolute top-20 w-[450px] h-[450px] bg-amber-500/10 blur-[130px] pointer-events-none animate-pulse"></div>
     <div class="absolute bottom-20 w-[450px] h-[450px] bg-purple-500/10 blur-[130px] pointer-events-none animate-pulse"></div>
-    <div class="text-center max-w-4xl w-full relative z-10 flex flex-col items-center">
+    <!-- 大赛标题: 浮于顶部, 单独上移, 不影响柱子居中 -->
+    <div class="absolute top-8 sm:top-12 left-0 right-0 text-center px-6 z-10">
       <span class="text-xs uppercase tracking-widest font-semibold text-amber-500 font-mono animate-bounce">GRAND FINALE WINNERS</span>
-      <h2 id="podium-title" class="text-3xl sm:text-5xl font-black tracking-tight mt-2 mb-1 bg-gradient-to-r from-amber-400 via-amber-100 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]">🏆 加冕荣誉殿堂 🏆</h2>
-      <p class="text-sm text-slate-400 mb-12 select-none">历经路演角逐与评委加权甄选，决赛大奖正式揭晓</p>
+      <h2 id="podium-title" class="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-2 leading-tight bg-gradient-to-r from-amber-400 via-amber-100 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(245,158,11,0.3)] break-words max-w-[120vw] mx-auto">🏆 加冕荣誉殿堂 🏆</h2>
+    </div>
+    <!-- 三甲柱子组: 保持垂直居中 -->
+    <div class="text-center max-w-4xl w-full relative z-10 flex flex-col items-center mt-16">
+      <p class="text-sm text-slate-400 mb-8 select-none">历经路演角逐与评委加权甄选，决赛大奖正式揭晓</p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-end w-full px-4 overflow-visible" id="podium-cards-container"></div>
-      <button onclick="closePodiumOverlay()" class="mt-14 px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-extrabold shadow-neon-gold hover:scale-105 active:scale-95 transition text-sm">✨ 确认并退回赛控</button>
+      <button onclick="closePodiumOverlay()" class="mt-10 px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-extrabold shadow-neon-gold hover:scale-105 active:scale-95 transition text-sm">✨ 确认并退回赛控</button>
     </div>
   </div>
 
@@ -182,6 +189,7 @@
     // ============ 启动 ============
     window.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('btn-next').addEventListener('click', advanceNext);
+      document.getElementById('btn-demo').addEventListener('click', runDemoSimulation);
       document.getElementById('btn-reset').addEventListener('click', resetScores);
       document.getElementById('btn-podium').addEventListener('click', triggerPodium);
       startClock();
@@ -193,12 +201,16 @@
         return;
       }
       // 先同步大赛名称 (即使布局未就绪也能显示)
-      setHeaderTitle(res.data.competition.name);
-      document.getElementById('podium-title').innerText = `🏆 ${res.data.competition.name} 🏆`;
+      setHeaderTitle(res.data.competition.name, res.data.competition.name_subtitle);
       document.getElementById('workspace').classList.remove('hidden');
       compId = res.data.competition.id;
       // 等待浏览器完成布局后再渲染 (从 display:none 切出后 clientHeight 才有效)
-      requestAnimationFrame(() => applySnapshot(res.data, false));
+      requestAnimationFrame(() => {
+        applySnapshot(res.data, false);
+        // 初始渲染完成后启动匀速滚动引擎 (与后续评分刷新解耦, 持续运行)
+        startJudgeScroll();
+        startMatrixScroll();
+      });
 
       // 建立 SSE
       connectSSE();
@@ -219,8 +231,15 @@
     function applySnapshot(data, animate) {
       const firstLoad = snap === null;
       snap = data;
-      setHeaderTitle(data.competition.name);
-      document.getElementById('podium-title').innerText = `🏆 ${data.competition.name} 🏆`;
+      setHeaderTitle(data.competition.name, data.competition.name_subtitle);
+      // 前三甲标题: 主标题 + 副标题分两行 (均需自带渐变 bg-clip-text, 否则继承 text-transparent 不可见)
+      const sub = (data.competition.name_subtitle || '').trim();
+      const podiumEl = document.getElementById('podium-title');
+      if (sub) {
+        podiumEl.innerHTML = `<div class="bg-gradient-to-r from-amber-400 via-amber-100 to-amber-500 bg-clip-text text-transparent">🏆 ${escapeHtml(data.competition.name)} 🏆</div><div class="text-lg sm:text-2xl lg:text-3xl mt-1 opacity-80 bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent">${escapeHtml(sub)}</div>`;
+      } else {
+        podiumEl.innerText = `🏆 ${data.competition.name} 🏆`;
+      }
 
       initializeLeaderboardDOM();
       recalculateAndAnimate(animate && !firstLoad);
@@ -365,6 +384,8 @@
       const active = snap.works.find(w => w.id === activeId) || snap.works[0];
       const container = document.getElementById('judges-detail-cards');
       if (!active || !container) return;
+      // 保存当前滚动位置: 重建 DOM 后恢复, 避免评分刷新打断匀速滚动
+      const savedScrollLeft = container.scrollLeft;
       let submitted = 0;
       const trimOn = snap.judges.filter(j => active.perJudge.find(p => p.judgeId === j.id && p.submitted)).length > 5;
       const buildCard = (j) => {
@@ -398,24 +419,27 @@
       // 渲染原始卡片 + 复制一份用于无缝循环滚动 (从左到右匀速)
       const cardsHtml = snap.judges.map(buildCard).join('');
       container.innerHTML = cardsHtml + cardsHtml;
+      // 恢复滚动位置 (内容相同时 offset 一致, 滚动连续不被打断)
+      container.scrollLeft = savedScrollLeft;
       const effCount = active.perJudge.filter(p => p.submitted && !p.excluded).length;
       document.getElementById('active-spotlight-sub-progress').innerText = `${effCount} / ${snap.judges.length} 评委已计入${trimOn ? ' (已去极值)' : ''}`;
-      // 启动匀速滚动引擎
-      startJudgeScroll();
     }
 
     // ============ 评委评分明细 · 匀速从左到右滚动引擎 ============
+    // 引擎独立于内容更新: 只启动一次, 评分刷新时只 diff 更新卡片内容, 不打断滚动
     let judgeScrollRAF = null;
     let judgeScrollPaused = false;
+    let judgeScrollStarted = false;
     function startJudgeScroll() {
       const container = document.getElementById('judges-detail-cards');
       if (!container) return;
-      // 清掉旧引擎
-      if (judgeScrollRAF) cancelAnimationFrame(judgeScrollRAF);
+      // 已启动则不重复启动 (评分刷新不会重启引擎)
+      if (judgeScrollStarted) return;
+      judgeScrollStarted = true;
       // 鼠标悬停暂停 / 移开恢复
       container.onmouseenter = () => { judgeScrollPaused = true; };
       container.onmouseleave = () => { judgeScrollPaused = false; };
-      // 初始从最左开始
+      // 仅首次启动时从最左开始
       container.scrollLeft = 0;
       const SPEED = 0.5; // px/帧, 匀速 (约 30px/s @60fps)
 
@@ -440,12 +464,18 @@
     function renderMatrixTable() {
       const works = snap.works; // 已排序
       const judges = snap.judges;
+      // 保存滚动位置, 重建表格后恢复, 避免评分刷新打断匀速滚动
+      const container = document.getElementById('matrix-table-container');
+      const savedScrollLeft = container ? container.scrollLeft : 0;
 
-      // 表头
+      // 评委列表头(单份), 用于双份循环滚动
+      const judgeThHtml = judges.map(j => `<th class="p-3 text-center font-semibold min-w-[110px]"><div>${escapeHtml(j.name)}</div>${levelTag(j.level)}</th>`).join('');
+
+      // 表头: 首列 sticky + 评委列双份 + 末列 sticky
       const thead = document.getElementById('matrix-thead-row');
       thead.innerHTML = `
         <th class="p-3 font-semibold min-w-[150px] sticky left-0 bg-slate-900/95 z-20 border-r border-slate-800/80 text-center">排位作品</th>
-        ${judges.map(j => `<th class="p-3 text-center font-semibold min-w-[110px]"><div>${escapeHtml(j.name)}</div>${levelTag(j.level)}</th>`).join('')}
+        ${judgeThHtml}${judgeThHtml}
         <th class="p-3 text-center font-semibold text-blue-400 min-w-[95px] sticky right-0 bg-slate-900/95 z-20 border-l border-slate-800/80">最终分</th>`;
 
       const tbody = document.getElementById('matrix-tbody');
@@ -461,18 +491,20 @@
             <div class="font-bold tracking-wide truncate max-w-[130px] sm:max-w-[170px]">${escapeHtml(w.name)}</div>
           </div>
         </td>`;
+        // 评委评分单元格(单份), 用于双份循环
+        let judgeCellsHtml = '';
         for (const j of judges) {
           const pj = w.perJudge.find(p => p.judgeId === j.id);
           const raw = pj && pj.submitted ? pj.final : null;
           const cellId = `cell-${w.id}-${j.id}`;
           if (raw === null) {
-            cells += `<td id="${cellId}" class="p-3 text-center font-mono font-semibold text-slate-700 min-w-[110px]">—</td>`;
+            judgeCellsHtml += `<td id="${cellId}" class="p-3 text-center font-mono font-semibold text-slate-700 min-w-[110px]">—</td>`;
           } else if (pj.excluded) {
             // 被剔除的评委（最高/最低）
             const isMax = w.extreme && raw === w.extreme.max;
-            cells += `<td id="${cellId}" class="p-2 text-center select-none min-w-[110px]"><span class="bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold px-1.5 py-1 rounded font-mono" title="${isMax ? '最高分已剔除' : '最低分已剔除'}">${isMax ? '↑' : '↓'} ${raw.toFixed(2)}</span></td>`;
+            judgeCellsHtml += `<td id="${cellId}" class="p-2 text-center select-none min-w-[110px]"><span class="bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold px-1.5 py-1 rounded font-mono" title="${isMax ? '最高分已剔除' : '最低分已剔除'}">${isMax ? '↑' : '↓'} ${raw.toFixed(2)}</span></td>`;
           } else {
-            cells += `<td id="${cellId}" class="p-3 text-center font-mono font-bold text-slate-300 min-w-[110px]">${raw.toFixed(2)}</td>`;
+            judgeCellsHtml += `<td id="${cellId}" class="p-3 text-center font-mono font-bold text-slate-300 min-w-[110px]">${raw.toFixed(2)}</td>`;
           }
           // 检测变化高亮
           const key = `${w.id}|${j.id}`;
@@ -484,12 +516,116 @@
           }
           prevCellScores[key] = raw;
         }
+        // 评委列双份 + 末列 sticky
+        cells += judgeCellsHtml + judgeCellsHtml;
         cells += `<td class="p-3 text-center font-mono font-extrabold text-blue-400 text-sm sticky right-0 ${stickyBg} z-10 border-l border-slate-800/85">${w.final.toFixed(2)}</td>`;
         return `<tr class="${rowCls} transition-all duration-300">${cells}</tr>`;
       }).join('');
+      // 恢复滚动位置 (内容相同时 offset 一致, 滚动连续不被打断)
+      if (container) container.scrollLeft = savedScrollLeft;
+    }
+
+    // ============ 矩阵评委列 · 匀速从左到右滚动引擎 (与评委卡片同方向同速度) ============
+    let matrixScrollRAF = null;
+    let matrixScrollStarted = false;
+    function startMatrixScroll() {
+      const container = document.getElementById('matrix-table-container');
+      if (!container) return;
+      if (matrixScrollStarted) return;
+      matrixScrollStarted = true;
+      container.scrollLeft = 0;
+      const SPEED = 0.5; // px/帧, 与评委卡片滚动同速
+      const needsScroll = () => container.scrollWidth > container.clientWidth + 2;
+      const tick = () => {
+        matrixScrollRAF = requestAnimationFrame(tick);
+        if (!needsScroll()) return;
+        container.scrollLeft += SPEED;
+        // 无缝循环: 评委列双份, 滚过第一份宽度后回跳
+        // 第一份宽度 = (scrollWidth - 首列宽 - 末列宽) / 2, 近似用 scrollWidth/2
+        const half = container.scrollWidth / 2;
+        if (container.scrollLeft >= half) {
+          container.scrollLeft -= half;
+        }
+      };
+      tick();
     }
 
     // ============ 操作 ============
+    // ============ 演示模拟: 30秒内逐步完成全部评委评分 ============
+    let demoRunning = false;
+    async function runDemoSimulation() {
+      if (demoRunning || !snap || !compId) return;
+      const btn = document.getElementById('btn-demo');
+      const judges = snap.judges || [];
+      const works = snap.works || [];
+      const standards = snap.standards || [];
+      if (!judges.length || !works.length || !standards.length) {
+        pushToast('⚠️ 缺少评委/作品/标准数据，无法演示');
+        return;
+      }
+
+      demoRunning = true;
+      btn.disabled = true;
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '🎬 演示中…';
+      btn.classList.add('opacity-60', 'cursor-not-allowed');
+
+      // 1) 清空所有评分 (SSE 会推送空快照, 大屏归零)
+      await fetch(`/api/competitions/${compId}/reset-scores`, { method: 'POST' });
+      await sleep(600);
+
+      // 2) 为每个作品预设"实力系数"(0.72~0.98), 让排名有规律
+      //    每次演示随机打乱, 保证视觉新鲜感
+      const powerMap = {};
+      const shuffledWorks = [...works].map(w => ({ id: w.id, power: 0.72 + Math.random() * 0.26 }));
+      shuffledWorks.forEach(w => { powerMap[w.id] = w.power; });
+
+      // 3) 构建评分任务队列: 所有 (评委, 作品) 组合, 打乱顺序
+      const tasks = [];
+      for (const j of judges) {
+        for (const w of works) {
+          // 该评委对该作品各维度的分数 = 作品实力 × 10 ± 扰动, clamp 6.0~9.8
+          const scores = {};
+          for (const s of standards) {
+            let val = powerMap[w.id] * 10 + (Math.random() - 0.5) * 1.6;
+            val = Math.round(Math.max(6.0, Math.min(9.8, val)) * 10) / 10;
+            scores[s.id] = val;
+          }
+          tasks.push({ judgeId: j.id, workId: w.id, scores });
+        }
+      }
+      // 打乱提交顺序, 让分数逐步涌现而非按顺序
+      for (let i = tasks.length - 1; i > 0; i--) {
+        const k = Math.floor(Math.random() * (i + 1));
+        [tasks[i], tasks[k]] = [tasks[k], tasks[i]];
+      }
+
+      // 4) 30秒内逐步提交, 每次提交触发 SSE → 大屏实时刷新
+      const DURATION = 30000;
+      const interval = Math.max(250, DURATION / tasks.length);
+      pushToast(`🎬 开始演示：${tasks.length} 个评分将在 30 秒内逐步完成`);
+
+      for (let i = 0; i < tasks.length; i++) {
+        const t = tasks[i];
+        // 评分提交 (忽略错误, 即使个别失败也不中断演示)
+        fetch(`/api/judge/${t.judgeId}/score`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ work_id: t.workId, scores: t.scores })
+        }).catch(() => {});
+        await sleep(interval);
+      }
+
+      // 5) 完成, 恢复按钮
+      demoRunning = false;
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      btn.classList.remove('opacity-60', 'cursor-not-allowed');
+      pushToast('🎉 演示评分完成，可查看最终排名与三甲加冕');
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
     async function advanceNext() {
       const res = await fetch(`/api/competitions/${compId}/active-work`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' }).then(r=>r.json());
       if (!res.ok) { pushToast(res.error); return; }
@@ -578,23 +714,18 @@
 
     function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-    // 大赛名称: 单行显示, 名称越长字号越小, 避免换行或被截断; 悬停可见全名
-    function setHeaderTitle(name) {
+    // 大赛名称: 分两行显示, 主标题(第一行)略大, 副标题(第二行)略小, 均水平居中
+    function setHeaderTitle(name, subtitle) {
       const el = document.getElementById('header-title');
       if (!el) return;
-      el.innerText = name;
-      el.setAttribute('title', name);
-      // 按字符数自适应字号 (大屏主标题)
-      const len = (name || '').length;
-      let cls = 'text-4xl tracking-[0.15em]';
-      if (len > 22) cls = 'text-3xl tracking-[0.12em]';
-      if (len > 30) cls = 'text-2xl tracking-[0.1em]';
-      if (len > 40) cls = 'text-xl tracking-[0.08em]';
-      // 保留其它样式类, 仅替换字号与字距
-      el.className = el.className
-        .replace(/text-2xl|text-3xl|text-4xl|text-xl|sm:text-3xl|lg:text-4xl/g, '')
-        .replace(/tracking-\[0?\.\d+em\]/g, '')
-        + ' ' + cls;
+      const sub = (subtitle || '').trim();
+      if (sub) {
+        // 副标题需自带 bg-clip-text 渐变, 否则继承 h1 的 text-transparent 会不可见
+        el.innerHTML = `<div class="leading-tight bg-gradient-to-r from-white via-cyan-100 via-blue-200 to-slate-400 bg-clip-text text-transparent">${escapeHtml(name)}</div><div class="text-xl sm:text-2xl lg:text-3xl font-bold opacity-80 leading-tight mt-1 bg-gradient-to-r from-cyan-200 via-blue-200 to-slate-400 bg-clip-text text-transparent">${escapeHtml(sub)}</div>`;
+      } else {
+        el.innerText = name;
+      }
+      el.setAttribute('title', name + (sub ? ' · ' + sub : ''));
     }
 
     // 等级标签 (用于表头/卡片)

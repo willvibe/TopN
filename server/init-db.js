@@ -37,6 +37,26 @@ const SQL = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
         ddl: `ALTER TABLE judges
                 ADD COLUMN weight DECIMAL(3,2) NOT NULL DEFAULT 1.00`,
       },
+      {
+        table: 'competitions',
+        column: 'expert_token',
+        ddl: `ALTER TABLE competitions ADD COLUMN expert_token VARCHAR(64) UNIQUE`,
+      },
+      {
+        table: 'competitions',
+        column: 'senior_token',
+        ddl: `ALTER TABLE competitions ADD COLUMN senior_token VARCHAR(64) UNIQUE`,
+      },
+      {
+        table: 'competitions',
+        column: 'normal_token',
+        ddl: `ALTER TABLE competitions ADD COLUMN normal_token VARCHAR(64) UNIQUE`,
+      },
+      {
+        table: 'competitions',
+        column: 'name_subtitle',
+        ddl: `ALTER TABLE competitions ADD COLUMN name_subtitle VARCHAR(200) DEFAULT ''`,
+      },
     ];
     for (const m of migrations) {
       const [cols] = await conn.query(

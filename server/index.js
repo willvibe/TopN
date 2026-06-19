@@ -83,6 +83,27 @@ async function getJudges(competitionId) {
   return rows;
 }
 
+// 样例演示大赛判定: 创建时间最早的一场「已发布且结构完整」的大赛
+// 结构完整 = 作品>=3 且 标准权重合计=100 且 评委>=3
+// 该大赛受硬保护, 不可删除, 用于演示
+async function getSampleCompetitionId() {
+  const [rows] = await pool.query(`
+    SELECT c.id,
+      (SELECT COUNT(*) FROM works WHERE competition_id = c.id) AS works_count,
+      (SELECT COALESCE(SUM(weight), 0) FROM standards WHERE competition_id = c.id) AS weight_sum,
+      (SELECT COUNT(*) FROM judges WHERE competition_id = c.id) AS judges_count
+    FROM competitions c
+    WHERE c.status = 'published'
+    ORDER BY c.created_at ASC, c.id ASC
+  `);
+  for (const r of rows) {
+    if (r.works_count >= 3 && r.weight_sum === 100 && r.judges_count >= 3) {
+      return r.id;
+    }
+  }
+  return null;
+}
+
 // 取某评委对某作品的 attempt（提交次数）
 async function getAttempt(workId, judgeId) {
   const [rows] = await pool.query(
@@ -183,6 +204,7 @@ async function buildCompetitionSnapshot(competitionId) {
     competition: {
       id: competition.id,
       name: competition.name,
+      name_subtitle: competition.name_subtitle,
       description: competition.description,
       status: competition.status,
       active_work_id: competition.active_work_id,
@@ -214,11 +236,11 @@ async function notifyScreen(competitionId) {
 
 // 创建大赛（草稿）
 app.post('/api/competitions', async (req, res) => {
-  const { name, description } = req.body || {};
+  const { name, name_subtitle, description } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json(fail('大赛名称必填'));
   const [r] = await pool.query(
-    `INSERT INTO competitions (name, description) VALUES (?, ?)`,
-    [name.trim(), description || '']
+    `INSERT INTO competitions (name, name_subtitle, description) VALUES (?, ?, ?)`,
+    [name.trim(), (name_subtitle || '').trim(), description || '']
   );
   const comp = await getCompetition(r.insertId);
   res.json(ok(comp));
@@ -232,7 +254,10 @@ app.get('/api/competitions', async (_req, res) => {
        (SELECT COUNT(*) FROM judges WHERE competition_id=c.id) AS judges_count
      FROM competitions c ORDER BY c.id DESC`
   );
-  res.json(ok(rows));
+  // 标记受保护的样例大赛
+  const sampleId = await getSampleCompetitionId();
+  const list = rows.map(r => ({ ...r, is_sample: (sampleId && r.id === sampleId) }));
+  res.json(ok(list));
 });
 
 // 大赛详情 + 关联数据
@@ -244,9 +269,10 @@ app.get('/api/competitions/:id', async (req, res) => {
   ]);
   res.json(ok({
     competition: {
-      id: comp.id, name: comp.name, description: comp.description,
+      id: comp.id, name: comp.name, name_subtitle: comp.name_subtitle, description: comp.description,
       status: comp.status, active_work_id: comp.active_work_id,
       share_token: comp.share_token, screen_token: comp.screen_token,
+      expert_token: comp.expert_token, senior_token: comp.senior_token, normal_token: comp.normal_token,
     },
     works, standards, judges,
   }));
@@ -256,14 +282,15 @@ app.get('/api/competitions/:id', async (req, res) => {
 app.put('/api/competitions/:id', async (req, res) => {
   const comp = await getCompetition(req.params.id);
   if (!comp) return res.status(404).json(fail('大赛不存在', 404));
-  const { name, description, status } = req.body || {};
+  const { name, name_subtitle, description, status } = req.body || {};
   await pool.query(
     `UPDATE competitions SET
        name = COALESCE(?, name),
+       name_subtitle = COALESCE(?, name_subtitle),
        description = COALESCE(?, description),
        status = COALESCE(?, status)
      WHERE id = ?`,
-    [name, description, status, comp.id]
+    [name, name_subtitle, description, status, comp.id]
   );
   const updated = await getCompetition(comp.id);
   res.json(ok(updated));
@@ -271,6 +298,12 @@ app.put('/api/competitions/:id', async (req, res) => {
 
 // 删除大赛
 app.delete('/api/competitions/:id', async (req, res) => {
+  const targetId = Number(req.params.id);
+  // 样例演示大赛硬保护: 不可删除
+  const sampleId = await getSampleCompetitionId();
+  if (sampleId && targetId === sampleId) {
+    return res.status(403).json(fail('样例演示大赛不可删除', 403));
+  }
   await pool.query(`DELETE FROM competitions WHERE id=?`, [req.params.id]);
   res.json(ok({ deleted: true }));
 });
@@ -311,6 +344,38 @@ app.put('/api/works/:workId', async (req, res) => {
 app.delete('/api/works/:workId', async (req, res) => {
   await pool.query(`DELETE FROM works WHERE id=?`, [req.params.workId]);
   res.json(ok({ deleted: true }));
+});
+
+// 批量调整作品出场顺序 (拖拽排序)
+// body: { order: [workId, workId, ...] } —— 按新顺序的作品 id 数组
+// seq 从 1 连续递增并归一化 (消除删除留下的空洞), 事务保证原子性
+app.put('/api/competitions/:id/works/reorder', async (req, res) => {
+  const comp = await getCompetition(req.params.id);
+  if (!comp) return res.status(404).json(fail('大赛不存在', 404));
+  const order = req.body && req.body.order;
+  if (!Array.isArray(order) || order.length === 0) {
+    return res.status(400).json(fail('缺少 order 数组', 400));
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    // 逐条更新 seq (从 1 连续递增), 限定 competition_id 防越权
+    for (let i = 0; i < order.length; i++) {
+      await conn.query(
+        `UPDATE works SET seq=? WHERE id=? AND competition_id=?`,
+        [i + 1, order[i], comp.id]
+      );
+    }
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+  await notifyScreen(comp.id);
+  const works = await getWorks(comp.id);
+  res.json(ok({ works }));
 });
 
 // ---------- 评分标准 CRUD ----------
@@ -471,10 +536,16 @@ app.post('/api/competitions/:id/publish', async (req, res) => {
 
   let share_token = comp.share_token || token();
   let screen_token = comp.screen_token || token();
+  // 3 个等级的评委注册链接 token (扫码自动注册领号)
+  let expert_token = comp.expert_token || token();
+  let senior_token = comp.senior_token || token();
+  let normal_token = comp.normal_token || token();
 
   await pool.query(
-    `UPDATE competitions SET status='published', share_token=?, screen_token=?, active_work_id=? WHERE id=?`,
-    [share_token, screen_token, works[0].id, comp.id]
+    `UPDATE competitions SET status='published', share_token=?, screen_token=?,
+       expert_token=?, senior_token=?, normal_token=?,
+       active_work_id=? WHERE id=?`,
+    [share_token, screen_token, expert_token, senior_token, normal_token, works[0].id, comp.id]
   );
 
   const updated = await getCompetition(comp.id);
@@ -482,7 +553,9 @@ app.post('/api/competitions/:id/publish', async (req, res) => {
   res.json(ok({
     competition: updated,
     links: {
-      share_url: `${base}/j/${share_token}`,       // 评委总入口
+      expert_url: `${base}/j/${expert_token}`,    // 专家评委入口 ×1.5
+      senior_url: `${base}/j/${senior_token}`,    // 资深评委入口 ×1.2
+      normal_url: `${base}/j/${normal_token}`,    // 普通评委入口 ×1.0
       screen_url: `${base}/s/${screen_token}`,     // 大屏
       admin_url: `${base}/admin.html?id=${updated.id}`,
     },
@@ -499,7 +572,94 @@ app.post('/api/seed/demo', async (_req, res) => {
   res.json(ok({ competition_id: id }));
 });
 
-// 通过 share_token 拿到大赛与评委列表（评委总入口选择身份）
+// 等级 token 字段名 -> { level, label }
+const LEVEL_TOKEN_FIELDS = [
+  { field: 'expert_token', level: 'expert' },
+  { field: 'senior_token', level: 'senior' },
+  { field: 'normal_token', level: 'normal' },
+];
+
+// 探测 token 类型：是某大赛的等级注册 token, 还是某评委的 access_token
+// 返回 { type: 'level'|'judge', level?(等级), competition }
+app.get('/api/judge/probe/:token', async (req, res) => {
+  const t = req.params.token;
+  // 1) 先查是否是等级 token
+  for (const { field, level } of LEVEL_TOKEN_FIELDS) {
+    const comp = await getCompetition(t, field);
+    if (comp) {
+      return res.json(ok({
+        type: 'level', level,
+        level_label: LEVEL_LABEL[level] || '普通',
+        competition: { id: comp.id, name: comp.name, status: comp.status },
+      }));
+    }
+  }
+  // 2) 再查是否是评委 access_token
+  const [rows] = await pool.query(
+    `SELECT j.id, j.competition_id, c.name AS competition_name, c.status AS competition_status
+     FROM judges j JOIN competitions c ON c.id=j.competition_id
+     WHERE j.access_token=? LIMIT 1`, [t]
+  );
+  if (rows.length) {
+    return res.json(ok({
+      type: 'judge',
+      judge_id: rows[0].id,
+      competition: { id: rows[0].competition_id, name: rows[0].competition_name, status: rows[0].competition_status },
+    }));
+  }
+  res.status(404).json(fail('链接无效', 404));
+});
+
+// 评委扫码注册领号: 按等级已注册人数 +1 分配编号, 创建评委记录并返回身份
+// 评委 name = 等级中文 + 编号 + 号 (如 专家1号); access_token 作为设备绑定凭证
+app.post('/api/judge/register/:levelToken', async (req, res) => {
+  const t = req.params.levelToken;
+  // 定位大赛与等级
+  let comp = null, level = null;
+  for (const { field, level: lv } of LEVEL_TOKEN_FIELDS) {
+    const c = await getCompetition(t, field);
+    if (c) { comp = c; level = lv; break; }
+  }
+  if (!comp) return res.status(404).json(fail('评委注册链接无效', 404));
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    // 行锁该大赛, 防并发注册产生重复编号 (SELECT ... FOR UPDATE 锁 competitions 行)
+    await conn.query(`SELECT id FROM competitions WHERE id=? FOR UPDATE`, [comp.id]);
+    // 等级内当前最大 seq
+    const [[maxRow]] = await conn.query(
+      `SELECT COALESCE(MAX(seq),0) AS m FROM judges WHERE competition_id=? AND level=?`,
+      [comp.id, level]
+    );
+    const seq = maxRow.m + 1;
+    const { weight } = resolveLevelWeight(level, undefined);
+    const name = `${LEVEL_LABEL[level]}${seq}号`;
+    const accessToken = token();
+    const [r] = await conn.query(
+      `INSERT INTO judges (competition_id, seq, name, seat_no, level, weight, access_token)
+       VALUES (?,?,?,?,?,?,?)`,
+      [comp.id, seq, name, '', level, weight, accessToken]
+    );
+    await conn.commit();
+    const [rows] = await pool.query(`SELECT * FROM judges WHERE id=?`, [r.insertId]);
+    const j = rows[0];
+    res.json(ok({
+      judge: {
+        id: j.id, access_token: j.access_token, name: j.name, seat_no: j.seat_no, seq: j.seq,
+        level: j.level, level_label: LEVEL_LABEL[j.level] || '普通', weight: Number(j.weight),
+      },
+      competition: { id: comp.id, name: comp.name, status: comp.status },
+    }));
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+});
+
+// 通过 share_token 拿到大赛与评委列表（旧总入口, 兼容保留）
 app.get('/api/competitions/by-share/:shareToken', async (req, res) => {
   const comp = await getCompetition(req.params.shareToken, 'share_token');
   if (!comp) return res.status(404).json(fail('评委链接无效', 404));

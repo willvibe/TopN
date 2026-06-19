@@ -13,11 +13,15 @@ USE `TopN`;
 CREATE TABLE IF NOT EXISTS competitions (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   name          VARCHAR(200) NOT NULL,
+  name_subtitle VARCHAR(200) DEFAULT '',   -- 副标题(第二行, 可选), 显示时字体略小
   description   TEXT,
   status        ENUM('draft','published','live','ended') NOT NULL DEFAULT 'draft',
   active_work_id INT DEFAULT NULL,                  -- 当前路演中的作品 (大屏推进)
-  share_token   VARCHAR(64) UNIQUE,    -- 评委扫码总入口
+  share_token   VARCHAR(64) UNIQUE,    -- 评委扫码总入口 (旧, 兼容保留)
   screen_token  VARCHAR(64) UNIQUE,    -- 大屏实时数据入口
+  expert_token  VARCHAR(64) UNIQUE,    -- 专家评委注册链接
+  senior_token  VARCHAR(64) UNIQUE,    -- 资深评委注册链接
+  normal_token  VARCHAR(64) UNIQUE,    -- 普通评委注册链接
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>星云智能 - 决赛评委匿名评分终端</title>
+  <title>TopN - 决赛评委匿名评分终端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <link href="https://fonts.loli.net/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -34,20 +34,20 @@
   <header class="sticky top-0 z-40 w-full glass-header border-b border-slate-900 px-4 py-3.5 flex items-center justify-between flex-shrink-0">
     <div class="flex items-center gap-2 min-w-0">
       <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981] flex-shrink-0"></span>
-      <span id="header-title" class="text-sm font-bold tracking-wide bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent truncate">星云赛控 · 智能评分终端</span>
+      <span id="header-title" class="text-base font-bold tracking-wide bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent break-words leading-snug">TopN · 智能评分终端</span>
     </div>
     <div id="header-seat" class="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-lg flex-shrink-0">
       <span class="text-[10px] text-blue-400 font-mono font-bold tracking-widest uppercase">未登录</span>
     </div>
   </header>
 
-  <!-- ============ VIEW 0: 评委选择 (通过 share_token 进入) ============ -->
-  <div id="view-select" class="hidden flex-grow flex flex-col p-4 space-y-4 max-w-md mx-auto w-full pb-10">
-    <div class="bg-slate-900/40 border border-slate-900/80 rounded-2xl p-4 shadow-xl">
-      <h2 class="text-base font-bold text-white">请确认您的评委身份</h2>
-      <p class="text-xs text-slate-400 mt-1">选择您的席位进入评分终端</p>
+  <!-- ============ VIEW 0: 注册领号过渡 (扫码时短暂显示) ============ -->
+  <div id="view-select" class="hidden flex-grow flex flex-col items-center justify-center p-4 space-y-4 max-w-md mx-auto w-full pb-10 text-center">
+    <div class="bg-slate-900/40 border border-slate-900/80 rounded-2xl p-8 shadow-xl">
+      <div class="text-4xl mb-3">🎫</div>
+      <h2 class="text-base font-bold text-white" id="register-title">正在为您分配评委编号…</h2>
+      <p class="text-xs text-slate-400 mt-2" id="register-msg">请稍候，正在注册领号</p>
     </div>
-    <div id="judges-select-list" class="space-y-2.5"></div>
   </div>
 
   <!-- ============ VIEW 1: 作品列表 ============ -->
@@ -141,21 +141,56 @@
     window.addEventListener('DOMContentLoaded', init);
 
     async function init() {
-      // 1) 先尝试当 access_token
-      const res1 = await fetch(`/api/judge/by-token/${PATH_TOKEN}`).then(r => r.json()).catch(() => null);
-      if (res1 && res1.ok) {
-        enterAsJudge(res1.data);
+      // 0) 优先: 本设备已绑定评委 -> 直接恢复身份 (扫码领号后 localStorage 记录)
+      const boundToken = localStorage.getItem('topn_access_token');
+      if (boundToken) {
+        const res0 = await fetch(`/api/judge/by-token/${boundToken}`).then(r => r.json()).catch(() => null);
+        if (res0 && res0.ok) { enterAsJudge(res0.data); return; }
+        // 绑定凭证失效, 清理
+        localStorage.removeItem('topn_access_token');
+        localStorage.removeItem('topn_judge_id');
+      }
+
+      const token = PATH_TOKEN;
+      // 无 token 直接报错
+      if (!token) {
+        document.getElementById('view-error').classList.remove('hidden');
+        document.getElementById('error-msg').innerText = '链接无效或大赛尚未发布';
         return;
       }
-      // 2) 再尝试当 share_token：列出该大赛评委，让用户选
-      const res2 = await fetch(`/api/competitions/by-share/${PATH_TOKEN}`).then(r => r.json()).catch(() => null);
-      if (res2 && res2.ok) {
-        showJudgeSelection(res2.data);
+
+      // 1) 探测 token 类型: 等级注册 token 还是评委 access_token
+      const probe = await fetch(`/api/judge/probe/${token}`).then(r => r.json()).catch(() => null);
+      if (!probe || !probe.ok) {
+        document.getElementById('view-error').classList.remove('hidden');
+        document.getElementById('error-msg').innerText = (probe && probe.error) || '链接无效或大赛尚未发布';
         return;
       }
-      // 失败
-      document.getElementById('view-error').classList.remove('hidden');
-      document.getElementById('error-msg').innerText = (res1 && res1.error) || '链接无效或大赛尚未发布';
+
+      if (probe.data.type === 'judge') {
+        // access_token: 已注册评委, 直接进入 (但不写 localStorage, 避免覆盖主设备绑定)
+        const res1 = await fetch(`/api/judge/by-token/${token}`).then(r => r.json());
+        if (res1 && res1.ok) { enterAsJudge(res1.data); return; }
+        document.getElementById('view-error').classList.remove('hidden');
+        return;
+      }
+
+      // 2) 等级 token: 展示领号过渡视图, 调 register 注册领号
+      showView('view-select');
+      const lvLabel = probe.data.level_label || '评委';
+      document.getElementById('register-title').innerText = `正在为您分配「${lvLabel}」评委编号…`;
+      document.getElementById('register-msg').innerText = '请稍候，系统正按扫码顺序为您注册领号';
+
+      const reg = await fetch(`/api/judge/register/${token}`, { method: 'POST' }).then(r => r.json()).catch(() => null);
+      if (!reg || !reg.ok) {
+        document.getElementById('view-error').classList.remove('hidden');
+        document.getElementById('error-msg').innerText = (reg && reg.error) || '注册失败，请刷新重试或联系管理员';
+        return;
+      }
+      // 绑定到本设备 (锁定编号, 不可重复领取)
+      localStorage.setItem('topn_access_token', reg.data.judge.access_token);
+      localStorage.setItem('topn_judge_id', reg.data.judge.id);
+      enterAsJudge(reg.data);
     }
 
     // 直接以某评委身份进入
@@ -167,31 +202,7 @@
       showView('view-list');
     }
 
-    // 通过 share_token 进入，展示评委选择列表
-    function showJudgeSelection(data) {
-      const { competition, judges } = data;
-      document.getElementById('header-title').innerText = competition.name;
-      document.getElementById('view-select').classList.remove('hidden');
-      const list = document.getElementById('judges-select-list');
-      if (!judges.length) {
-        list.innerHTML = `<div class="bg-slate-900/40 border border-slate-900 rounded-2xl p-8 text-center text-slate-500 text-sm">该大赛尚未录入评委</div>`;
-        return;
-      }
-      list.innerHTML = judges.map(j => `
-        <button onclick="selectJudgeByToken('${j.access_token}')" class="w-full text-left bg-slate-900/40 hover:bg-slate-900/70 border border-slate-900 hover:border-blue-500/40 p-4 rounded-2xl flex justify-between items-center transition">
-          <div class="min-w-0">
-            <h4 class="font-bold text-slate-100 text-sm truncate">${escapeHtml(j.name)}</h4>
-            ${j.seat_no ? `<span class="text-[10px] text-slate-500 font-mono">席位：${escapeHtml(j.seat_no)}</span>` : '<span class="text-[10px] text-slate-600">点击进入评分</span>'}
-          </div>
-          <span class="text-blue-400 text-xs font-bold flex-shrink-0">进入 ➜</span>
-        </button>`).join('');
-    }
-
-    async function selectJudgeByToken(accessToken) {
-      const res = await fetch(`/api/judge/by-token/${accessToken}`).then(r => r.json());
-      if (!res.ok) { pushToast(res.error); return; }
-      enterAsJudge(res.data);
-    }
+    // (旧的评委选择列表流程已移除 —— 现在扫码即自动注册领号, 无需手动选身份)
 
     async function loadDashboard() {
       const res = await fetch(`/api/judge/${judgeInfo.judge.id}/dashboard`).then(r => r.json());

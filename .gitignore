@@ -22,3 +22,7 @@ npm-debug.log*
 _check.js
 verify.js
 fill_scores.js
+
+# 运行时生成的文件
+app.pid
+logs/

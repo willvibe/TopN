@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>星云智能 - 评分活动赛控后台</title>
+  <title>TopN - 评分活动赛控后台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <link href="https://fonts.loli.net/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
@@ -42,7 +43,7 @@
     <div class="flex items-center gap-3 xl:w-1/4">
       <div class="flex items-center gap-2 bg-slate-900/60 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-800">
         <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_#3b82f6]"></span>
-        <span class="text-xs font-mono font-bold tracking-widest text-blue-400">NEBULA CONTROL v2.6</span>
+        <span class="text-xs font-mono font-bold tracking-widest text-blue-400">TOPN CONTROL v2.6</span>
       </div>
     </div>
 
@@ -52,27 +53,43 @@
         <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-blue-500/80"></div>
         <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-blue-500/80"></div>
         <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-blue-500/80"></div>
-        <h1 id="header-title" class="text-xl sm:text-2xl lg:text-[1.85rem] font-black tracking-[0.12em] bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent select-none py-1 leading-normal filter drop-shadow-[0_0_15px_rgba(59,130,246,0.4)] whitespace-nowrap overflow-hidden text-ellipsis block max-w-[55vw] xl:max-w-[40vw] mx-auto" title="">
+        <h1 id="header-title" class="text-xl sm:text-2xl lg:text-3xl font-black tracking-[0.08em] bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent select-none py-1 leading-snug filter drop-shadow-[0_0_15px_rgba(59,130,246,0.4)] break-words max-w-[120vw] mx-auto" title="">
           评分活动赛控后台
         </h1>
       </div>
     </div>
 
       <div class="flex items-center gap-2 justify-end xl:w-1/4">
-      <!-- 大赛选择 -->
-      <select id="comp-selector" onchange="onSelectCompetition(this.value)" class="text-xs font-semibold py-2 px-3 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 focus:outline-none focus:border-blue-500 max-w-[180px]">
-        <option value="">— 选择大赛 —</option>
-      </select>
-      <button onclick="seedDemo()" title="一键生成 6 作品 + 7 评委(含等级)的样例大赛" class="text-xs font-semibold py-2 px-3.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 transition">⚡ 样例</button>
-      <button onclick="openNewCompModal()" class="text-xs font-semibold py-2 px-3.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition text-slate-400 hover:text-slate-200">+ 新建</button>
-    </div>
+        <button id="btn-back-list" onclick="showCompListView()" class="hidden text-xs font-semibold py-2 px-3.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition text-slate-400 hover:text-slate-200">📋 活动列表</button>
+      </div>
   </header>
 
-  <!-- 空状态 -->
-  <div id="empty-state" class="flex-grow flex items-center justify-center">
-    <div class="text-center text-slate-500">
-      <div class="text-6xl mb-4">🛰️</div>
-      <p class="text-sm">请选择或新建一场评分大赛以开始</p>
+  <!-- 评分活动管理列表 (进入后台默认首页) -->
+  <div id="comp-list-view" class="flex-grow overflow-y-auto">
+    <div class="max-w-5xl mx-auto w-full p-6 space-y-5">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="text-xl font-bold text-white tracking-wide">评分活动管理</h2>
+          <p class="text-xs text-slate-400 mt-0.5">管理所有评分活动，选择一场进入编辑，或新建/删除</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openNewCompModal()" class="text-xs font-bold py-2 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-500 text-white hover:shadow-neon-blue transition">+ 新建大赛</button>
+        </div>
+      </div>
+      <div class="space-y-3" id="comp-list-container"></div>
+    </div>
+  </div>
+
+  <!-- 新建大赛 Modal -->
+  <div id="new-comp-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4">
+      <h3 class="text-lg font-bold text-white">新建评分大赛</h3>
+      <div><label class="text-xs text-slate-400 block mb-1">大赛名称</label><input type="text" id="new-comp-name" placeholder="如：2026 全球未来科技创新大赛 · 决赛现场" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"></div>
+      <div><label class="text-xs text-slate-400 block mb-1">大赛描述 (可选)</label><textarea id="new-comp-desc" placeholder="大赛简介..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition h-20 resize-none"></textarea></div>
+      <div class="flex gap-3 justify-end pt-2">
+        <button onclick="closeNewCompModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">取消</button>
+        <button onclick="createCompetition()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-500 text-white text-xs font-extrabold hover:shadow-neon-blue transition">创建</button>
+      </div>
     </div>
   </div>
 
@@ -120,8 +137,12 @@
             <div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl space-y-4 shadow-xl">
               <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">大赛基础配置</h3>
               <div>
-                <label class="text-xs text-slate-400 block mb-1">大赛名称</label>
-                <input type="text" id="comp-name-input" oninput="onCompNameInput(this.value)" placeholder="如：2026 全球未来科技创新大赛 · 决赛现场" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150">
+                <label class="text-xs text-slate-400 block mb-1">大赛名称 <span class="text-slate-600">(主标题, 第一行, 字体略大)</span></label>
+                <input type="text" id="comp-name-input" oninput="onCompNameInput(this.value)" placeholder="如：2026 全球未来科技创新大赛" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150">
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1">大赛副标题 <span class="text-slate-600">(可选, 第二行, 字体略小)</span></label>
+                <input type="text" id="comp-subtitle-input" oninput="onCompSubtitleInput(this.value)" placeholder="如：决赛现场 · Future Tech Innovation" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150">
               </div>
               <div>
                 <label class="text-xs text-slate-400 block mb-1">大赛描述 (可选)</label>
@@ -180,33 +201,32 @@
 
       <!-- TAB 3: JUDGES -->
       <div id="tab-judges" class="tab-pane hidden space-y-6">
-        <div><h2 class="text-lg sm:text-xl font-bold text-white tracking-wide">评委名单录入</h2><p class="text-xs text-slate-400 mt-0.5">登记评委信息，系统将为每位评委生成专属匿名评分链接</p></div>
+        <div><h2 class="text-lg sm:text-xl font-bold text-white tracking-wide">评委扫码注册</h2><p class="text-xs text-slate-400 mt-0.5">发布后向对应等级评委分享专属入口，评委扫码即按顺序自动注册领号（专家1号、专家2号…），无需预先录入</p></div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl space-y-4 lg:col-span-1 shadow-xl">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">新增评委</h3>
-            <form id="form-judge" class="space-y-4" onsubmit="addJudge(event)">
-              <div><label class="text-xs text-slate-400 block mb-1">评委称谓</label><input required type="text" id="judge-name" placeholder="如：张伟 / 1号评委(金沙资本)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
-              <div><label class="text-xs text-slate-400 block mb-1">席位号 (可选)</label><input type="text" id="judge-seat" placeholder="如：A08" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
-              <div>
-                <label class="text-xs text-slate-400 block mb-1">评委等级 <span class="text-slate-600">(决定个人评分权重)</span></label>
-                <div class="grid grid-cols-3 gap-2" id="judge-level-group">
-                  <button type="button" data-level="expert" onclick="selectJudgeLevel('expert')" class="level-btn py-2.5 rounded-xl border text-xs font-bold transition">
-                    <div>专家</div><div class="text-[10px] font-mono opacity-80">×1.5</div>
-                  </button>
-                  <button type="button" data-level="senior" onclick="selectJudgeLevel('senior')" class="level-btn py-2.5 rounded-xl border text-xs font-bold transition">
-                    <div>资深</div><div class="text-[10px] font-mono opacity-80">×1.2</div>
-                  </button>
-                  <button type="button" data-level="normal" onclick="selectJudgeLevel('normal')" class="level-btn py-2.5 rounded-xl border text-xs font-bold transition">
-                    <div>普通</div><div class="text-[10px] font-mono opacity-80">×1.0</div>
-                  </button>
-                </div>
-                <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">提示：评委超过 5 位时，将自动去掉一个最高分与一个最低分（按加权分），再对其余评委按等级权重加权平均。</p>
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">三种评委等级</h3>
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between bg-amber-500/5 border border-amber-500/25 rounded-xl px-4 py-3">
+                <div><div class="text-sm font-bold text-amber-300">🏅 专家评委</div><div class="text-[10px] text-slate-500 mt-0.5">评分权重最高</div></div>
+                <span class="text-sm font-black font-mono text-amber-400">×1.5</span>
               </div>
-              <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-500 text-white font-bold py-3 rounded-xl transition duration-150 hover:shadow-neon-blue text-sm flex items-center justify-center gap-2">添加评委席位</button>
-            </form>
+              <div class="flex items-center justify-between bg-indigo-500/5 border border-indigo-500/25 rounded-xl px-4 py-3">
+                <div><div class="text-sm font-bold text-indigo-300">🔷 资深评委</div><div class="text-[10px] text-slate-500 mt-0.5">评分权重中等</div></div>
+                <span class="text-sm font-black font-mono text-indigo-400">×1.2</span>
+              </div>
+              <div class="flex items-center justify-between bg-slate-500/5 border border-slate-600 rounded-xl px-4 py-3">
+                <div><div class="text-sm font-bold text-slate-300">⚪ 普通评委</div><div class="text-[10px] text-slate-500 mt-0.5">标准评分权重</div></div>
+                <span class="text-sm font-black font-mono text-slate-400">×1.0</span>
+              </div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-[11px] text-slate-400 leading-relaxed">
+              <p class="font-semibold text-slate-300 mb-1">📋 使用方式</p>
+              在「概览检查发布」标签页发布大赛后，将生成 3 个等级的评分入口二维码/链接。评委扫码即自动按等级内顺序编号并锁定身份，无需在此录入。每位评委的编号在首次扫码时确定，不可重复领取。
+              <p class="mt-1.5 text-slate-500">评委超过 5 位时，自动去掉一个最高分与一个最低分后加权平均。</p>
+            </div>
           </div>
           <div class="lg:col-span-2 space-y-3">
-            <div class="flex justify-between items-center text-xs font-semibold text-slate-400 font-mono select-none"><span>评委名单与专属评分链接</span><span id="judges-list-counter">已注册：0 位</span></div>
+            <div class="flex justify-between items-center text-xs font-semibold text-slate-400 font-mono select-none"><span>已扫码注册评委（按等级分组）</span><span id="judges-list-counter">已注册：0 位</span></div>
             <div class="space-y-3" id="judges-cards-container"></div>
           </div>
         </div>
@@ -238,19 +258,6 @@
     </div>
   </main>
 
-  <!-- 新建大赛 Modal -->
-  <div id="new-comp-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4">
-      <h3 class="text-lg font-bold text-white">新建评分大赛</h3>
-      <div><label class="text-xs text-slate-400 block mb-1">大赛名称</label><input type="text" id="new-comp-name" placeholder="如：2026 全球未来科技创新大赛 · 决赛现场" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"></div>
-      <div><label class="text-xs text-slate-400 block mb-1">大赛描述 (可选)</label><textarea id="new-comp-desc" placeholder="大赛简介..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition h-20 resize-none"></textarea></div>
-      <div class="flex gap-3 justify-end pt-2">
-        <button onclick="closeNewCompModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">取消</button>
-        <button onclick="createCompetition()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-500 text-white text-xs font-extrabold hover:shadow-neon-blue transition">创建</button>
-      </div>
-    </div>
-  </div>
-
   <script>
     // ============ 全局状态 ============
     let currentComp = null;       // 当前选中的大赛对象
@@ -261,45 +268,71 @@
     const apiPut = (u, body) => API(u, { method: 'PUT', body: JSON.stringify(body || {}) });
     const apiDel = (u) => API(u, { method: 'DELETE' });
 
-    // ============ 初始化 ============
+    // ============ 初始化: 进入后台显示评分活动管理列表 ============
     window.addEventListener('DOMContentLoaded', async () => {
-      selectJudgeLevel('normal'); // 默认选中"普通"
-      await loadCompetitions();
-      // 支持 ?id=xxx 直接打开某场
-      const params = new URLSearchParams(location.search);
-      const id = params.get('id');
-      if (id) {
-        const sel = document.getElementById('comp-selector');
-        sel.value = id;
-        onSelectCompetition(id);
-      }
+      await renderCompList();
     });
 
-    async function loadCompetitions() {
-      const res = await API('/api/competitions');
-      const sel = document.getElementById('comp-selector');
-      const list = res.data || [];
-      sel.innerHTML = '<option value="">— 选择大赛 —</option>' +
-        list.map(c => `<option value="${c.id}">${c.name} (${c.works_count}作品/${c.judges_count}评委)</option>`).join('');
+    // 显示活动列表首页 (隐藏工作区)
+    function showCompListView() {
+      document.getElementById('comp-list-view').classList.remove('hidden');
+      document.getElementById('workspace').classList.add('hidden');
+      document.getElementById('btn-back-list').classList.add('hidden');
+      currentComp = null; compDetail = null;
+      renderCompList();
     }
 
-    async function onSelectCompetition(id) {
-      if (!id) {
-        document.getElementById('empty-state').classList.remove('hidden');
-        document.getElementById('workspace').classList.add('hidden');
-        currentComp = null; compDetail = null;
+    // 进入某大赛编辑工作区
+    function enterCompetition(id) {
+      loadCurrentCompetition(id);
+    }
+
+    // 渲染活动列表
+    async function renderCompList() {
+      const container = document.getElementById('comp-list-container');
+      const res = await API('/api/competitions');
+      const list = res.data || [];
+      if (list.length === 0) {
+        container.innerHTML = `<div class="bg-slate-900/30 border border-slate-900 rounded-2xl p-12 text-center text-slate-500 text-sm">暂无评分活动，点击右上角「新建大赛」开始</div>`;
         return;
       }
-      const res = await API(`/api/competitions/${id}`);
-      if (!res.ok) { pushToast(res.error); return; }
-      compDetail = res.data;
-      currentComp = compDetail.competition;
-      document.getElementById('empty-state').classList.add('hidden');
-      document.getElementById('workspace').classList.remove('hidden');
-      setHeaderTitle(currentComp.name);
-      document.getElementById('comp-name-input').value = currentComp.name;
-      document.getElementById('comp-desc-input').value = currentComp.description || '';
-      switchTab('tab-works');
+      const STATUS_BADGE = {
+        draft:     '<span class="text-[10px] px-2 py-0.5 rounded bg-slate-700/50 text-slate-300 font-mono">草稿</span>',
+        published: '<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400 font-mono">已发布</span>',
+        live:      '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-900/40 text-blue-400 font-mono animate-pulse">进行中</span>',
+        ended:     '<span class="text-[10px] px-2 py-0.5 rounded bg-amber-900/40 text-amber-400 font-mono">已结束</span>',
+      };
+      container.innerHTML = list.map(c => {
+        const created = c.created_at ? new Date(c.created_at).toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+        const safeName = escapeHtml(c.name).replace(/'/g, "\\'");
+        const sampleBadge = c.is_sample ? '<span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 font-mono border border-blue-500/30">🛡️ 样例</span>' : '';
+        const delBtn = c.is_sample
+          ? '<button disabled title="样例演示大赛受保护，不可删除" class="text-xs font-semibold text-slate-600 px-3 py-2 rounded-lg border border-slate-800 cursor-not-allowed">🗑️ 删除</button>'
+          : `<button onclick="deleteCompetition(${c.id}, '${safeName}')" class="text-xs font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-3 py-2 rounded-lg transition duration-150 border border-rose-500/20">🗑️ 删除</button>`;
+        return `
+        <div class="bg-slate-900/40 border border-slate-900 hover:border-slate-700 p-4 rounded-xl flex justify-between items-center gap-4 transition">
+          <div class="min-w-0 flex-grow">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <h4 class="font-extrabold text-slate-100 text-sm truncate">${escapeHtml(c.name)}</h4>
+              ${STATUS_BADGE[c.status] || ''}
+              ${sampleBadge}
+            </div>
+            <p class="text-xs text-slate-500 font-mono">${c.works_count} 作品 · ${c.judges_count} 评委 · 创建于 ${created}</p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button onclick="enterCompetition(${c.id})" class="text-xs font-bold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 px-3 py-2 rounded-lg transition duration-150 border border-blue-500/30">✏️ 进入编辑</button>
+            ${delBtn}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function deleteCompetition(id, name) {
+      if (!confirm(`确认删除评分活动「${name}」？\n\n此操作不可撤销，将一并删除其所有作品、评分标准、评委及评分数据。`)) return;
+      const res = await apiDel(`/api/competitions/${id}`);
+      if (!res.ok) { pushToast(res.error || '删除失败'); return; }
+      pushToast(`🗑️ 已删除活动: ${name}`);
+      renderCompList();
     }
 
     function openNewCompModal() { document.getElementById('new-comp-modal').classList.remove('hidden'); }
@@ -314,16 +347,31 @@
       closeNewCompModal();
       document.getElementById('new-comp-name').value = '';
       document.getElementById('new-comp-desc').value = '';
-      await loadCompetitions();
-      document.getElementById('comp-selector').value = res.data.id;
-      onSelectCompetition(res.data.id);
       pushToast('🎉 大赛已创建');
+      renderCompList();
+    }
+
+    // 加载指定大赛进入工作区
+    async function loadCurrentCompetition(id) {
+      const res = await API(`/api/competitions/${id}`);
+      if (!res.ok) { pushToast(res.error); return; }
+      compDetail = res.data;
+      currentComp = compDetail.competition;
+      // 切换视图: 隐藏列表页, 显示工作区
+      document.getElementById('comp-list-view').classList.add('hidden');
+      document.getElementById('workspace').classList.remove('hidden');
+      document.getElementById('btn-back-list').classList.remove('hidden');
+      setHeaderTitle(currentComp.name, currentComp.name_subtitle);
+      document.getElementById('comp-name-input').value = currentComp.name;
+      document.getElementById('comp-subtitle-input').value = currentComp.name_subtitle || '';
+      document.getElementById('comp-desc-input').value = currentComp.description || '';
+      switchTab('tab-works');
     }
 
     // 大赛名称/描述自动保存
     let nameTimer = null;
     function onCompNameInput(val) {
-      setHeaderTitle(val || '评分活动赛控后台');
+      setHeaderTitle(val || '评分活动赛控后台', document.getElementById('comp-subtitle-input')?.value || '');
       clearTimeout(nameTimer);
       nameTimer = setTimeout(async () => {
         if (!currentComp) return;
@@ -331,21 +379,18 @@
       }, 600);
     }
 
-    // ============ 评委等级选择 ============
-    let selectedJudgeLevel = 'normal';
-    function selectJudgeLevel(level) {
-      selectedJudgeLevel = level;
-      const styles = {
-        expert:  'border-amber-500 bg-amber-500/15 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.35)]',
-        senior:  'border-indigo-500 bg-indigo-500/15 text-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.35)]',
-        normal:  'border-slate-600 bg-slate-700/40 text-slate-300',
-      };
-      const inactive = 'border-slate-800 bg-slate-950 text-slate-500';
-      document.querySelectorAll('.level-btn').forEach(btn => {
-        const lv = btn.getAttribute('data-level');
-        btn.className = 'level-btn py-2.5 rounded-xl border text-xs font-bold transition ' + (lv === level ? styles[lv] : inactive);
-      });
+    // 大赛副标题自动保存
+    let subtitleTimer = null;
+    function onCompSubtitleInput(val) {
+      clearTimeout(subtitleTimer);
+      subtitleTimer = setTimeout(async () => {
+        if (!currentComp) return;
+        await apiPut(`/api/competitions/${currentComp.id}`, { name_subtitle: val });
+      }, 600);
     }
+
+    // ============ 评委等级选择 ============
+    // (旧的评委等级选择/录入逻辑已移除 —— 评委改为扫码自动注册领号)
 
     // ============ TAB 切换 ============
     function switchTab(tabId) {
@@ -373,6 +418,78 @@
       document.getElementById('form-work').reset();
       pushToast(`🎉 已添加作品: ${name}`);
       renderAll();
+    }
+
+    // 作品拖拽排序: 使用原生 HTML5 拖拽 API (零依赖, 避免第三方库兼容性问题)
+    let dragSrcEl = null;
+    function initWorksSortable() {
+      const el = document.getElementById('works-cards-container');
+      if (!el) return;
+      const cards = el.querySelectorAll('.work-card');
+      cards.forEach(card => {
+        // 绑定原生拖拽事件
+        card.addEventListener('dragstart', onWorkDragStart);
+        card.addEventListener('dragover', onWorkDragOver);
+        card.addEventListener('drop', onWorkDrop);
+        card.addEventListener('dragend', onWorkDragEnd);
+      });
+    }
+
+    function onWorkDragStart(e) {
+      dragSrcEl = e.currentTarget;
+      e.currentTarget.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+      // 兼容: 部分浏览器需 setData 才触发 drag
+      try { e.dataTransfer.setData('text/plain', ''); } catch(_) {}
+    }
+
+    function onWorkDragOver(e) {
+      e.preventDefault(); // 允许 drop
+      e.dataTransfer.dropEffect = 'move';
+      // 视觉提示: 在目标卡片上方显示插入线
+      const target = e.currentTarget;
+      if (target !== dragSrcEl) {
+        target.style.borderTop = '2px solid #3b82f6';
+      }
+      return false;
+    }
+
+    function onWorkDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const target = e.currentTarget;
+      // 清除所有插入线
+      document.querySelectorAll('#works-cards-container .work-card').forEach(c => { c.style.borderTop = ''; });
+      if (dragSrcEl && target && dragSrcEl !== target) {
+        const container = document.getElementById('works-cards-container');
+        // 根据拖放位置决定插在目标前还是后
+        const rect = target.getBoundingClientRect();
+        const mid = rect.top + rect.height / 2;
+        if (e.clientY < mid) {
+          container.insertBefore(dragSrcEl, target);
+        } else {
+          container.insertBefore(dragSrcEl, target.nextSibling);
+        }
+        // 读取新顺序并保存
+        const newOrder = Array.from(container.querySelectorAll('.work-card')).map(c => Number(c.dataset.workId));
+        container.querySelectorAll('.work-seq-badge').forEach((b, i) => { b.innerText = i + 1; });
+        reorderWorks(newOrder);
+      }
+      return false;
+    }
+
+    function onWorkDragEnd(e) {
+      e.currentTarget.style.opacity = '';
+      document.querySelectorAll('#works-cards-container .work-card').forEach(c => { c.style.borderTop = ''; });
+    }
+
+    // 调用后端批量重排接口, 同步 compDetail.works 的 seq
+    async function reorderWorks(order) {
+      const res = await apiPut(`/api/competitions/${currentComp.id}/works/reorder`, { order });
+      if (!res.ok) { pushToast(res.error || '排序保存失败'); renderAll(); return; }
+      // 用后端返回的有序 works 覆盖本地, 保持数据一致
+      compDetail.works = res.data.works;
+      pushToast('🔀 出场顺序已更新');
     }
 
     async function deleteWork(id) {
@@ -410,20 +527,6 @@
     }
 
     // ============ 评委 ============
-    async function addJudge(e) {
-      e.preventDefault();
-      const name = document.getElementById('judge-name').value.trim();
-      const seat_no = document.getElementById('judge-seat').value.trim();
-      const res = await apiPost(`/api/competitions/${currentComp.id}/judges`, { name, seat_no, level: selectedJudgeLevel });
-      if (!res.ok) { pushToast(res.error); return; }
-      compDetail.judges.push(res.data);
-      document.getElementById('form-judge').reset();
-      selectedJudgeLevel = 'normal';
-      selectJudgeLevel('normal');
-      pushToast(`🎉 已添加评委: ${name}`);
-      renderAll();
-    }
-
     async function deleteJudge(id) {
       if (!confirm('确认删除该评委？其评分也会删除。')) return;
       const res = await apiDel(`/api/judges/${id}`);
@@ -434,9 +537,37 @@
     }
 
     function copyText(txt) {
-      navigator.clipboard?.writeText(txt).then(() => pushToast('📋 已复制到剪贴板')).catch(() => {
-        const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); pushToast('📋 已复制');
-      });
+      // 优先用 Clipboard API (仅在 HTTPS / localhost 安全上下文可用)
+      // 注意: 不能用 navigator.clipboard?.writeText().then().catch() 写法 ——
+      // 当 clipboard 为 undefined 时, 可选链短路返回 undefined, undefined.then() 会
+      // 同步抛 TypeError, 后续 .catch 永不执行, fallback 失效。故需先显式判空。
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(txt)
+          .then(() => pushToast('📋 已复制到剪贴板'))
+          .catch(() => copyTextFallback(txt));
+      } else {
+        copyTextFallback(txt);
+      }
+    }
+
+    // 降级方案: 用临时 textarea + execCommand('copy'), 兼容 HTTP / 旧浏览器
+    function copyTextFallback(txt) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = txt;
+        // 移出可视区域, 避免页面跳动
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        pushToast(ok ? '📋 已复制到剪贴板' : '⚠️ 复制失败, 请手动选中复制');
+      } catch (e) {
+        pushToast('⚠️ 复制失败, 请手动选中复制');
+      }
     }
 
     // ============ 渲染 ============
@@ -449,17 +580,19 @@
       wc.innerHTML = works.length === 0
         ? `<div class="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-10 text-center select-none text-slate-500">暂无入围作品，请在左侧表单录入</div>`
         : works.map((w, idx) => `
-          <div class="bg-slate-900/40 hover:bg-slate-900/70 border border-slate-900 hover:border-slate-800 p-4 rounded-xl flex justify-between items-start transition duration-150 gap-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg bg-blue-900/20 text-blue-400 font-bold font-mono border border-blue-500/20 flex items-center justify-center">#${idx+1}</div>
-              <div>
+          <div class="work-card bg-slate-900/40 hover:bg-slate-900/70 border border-slate-900 hover:border-slate-800 p-4 rounded-xl flex justify-between items-center transition duration-150 gap-3" draggable="true" data-work-id="${w.id}" style="cursor:grab">
+            <div class="flex items-center gap-3 min-w-0 flex-grow">
+              <div class="drag-handle cursor-grab text-slate-500 hover:text-blue-400 transition flex-shrink-0 flex items-center justify-center w-7 h-10 rounded-lg hover:bg-slate-800 text-lg leading-none select-none" title="拖动调整出场顺序">⠿</div>
+              <div class="w-10 h-10 rounded-lg bg-blue-900/20 text-blue-400 font-bold font-mono border border-blue-500/20 flex items-center justify-center flex-shrink-0 work-seq-badge">${idx+1}</div>
+              <div class="min-w-0">
                 <h4 class="font-extrabold text-slate-100 text-sm tracking-wide flex items-center gap-2">${escapeHtml(w.name)} <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">${escapeHtml(w.category)}</span></h4>
-                <p class="text-xs text-slate-400 font-medium mt-0.5">${escapeHtml(w.team)} · <span class="text-[10px] text-slate-500">${escapeHtml(w.description||'')}</span></p>
+                <p class="text-xs text-slate-400 font-medium mt-0.5 truncate">${escapeHtml(w.team)} · <span class="text-[10px] text-slate-500">${escapeHtml(w.description||'')}</span></p>
               </div>
             </div>
             <button onclick="deleteWork(${w.id})" class="text-xs font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-2.5 py-1.5 rounded-lg transition duration-150 flex-shrink-0">移出决赛</button>
           </div>`).join('');
       document.getElementById('works-list-counter').innerText = `已注册：${works.length} 组`;
+      initWorksSortable();
 
       // 标准
       const totalWeight = standards.reduce((a, b) => a + b.weight, 0);
@@ -478,30 +611,44 @@
       gauge.innerText = `${totalWeight}%`;
       gauge.className = totalWeight === 100 ? "text-3xl font-black font-mono text-emerald-400 drop-shadow-[0_0_8px_#10b981]" : "text-3xl font-black font-mono text-rose-500";
 
-      // 评委
+      // 评委: 按等级分组 (expert -> senior -> normal), 每组按 seq 排序
       const jc = document.getElementById('judges-cards-container');
-      jc.innerHTML = judges.length === 0
-        ? `<div class="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-8 text-center text-slate-500">暂无评委，请在左侧添加</div>`
-        : judges.map((j, idx) => {
-            const link = `${location.origin}/j/${j.access_token}`;
-            const lvl = levelBadge(j.level);
+      const LEVEL_ORDER = ['expert', 'senior', 'normal'];
+      const LEVEL_META = {
+        expert: { label: '专家', emoji: '🏅', badgeCls: 'bg-amber-900/20 text-amber-400 border border-amber-500/20' },
+        senior: { label: '资深', emoji: '🔷', badgeCls: 'bg-indigo-900/20 text-indigo-400 border border-indigo-500/20' },
+        normal: { label: '普通', emoji: '⚪', badgeCls: 'bg-slate-700/40 text-slate-300 border border-slate-600' },
+      };
+      const grouped = {};
+      for (const lv of LEVEL_ORDER) grouped[lv] = judges.filter(j => j.level === lv).sort((a, b) => a.seq - b.seq);
+
+      if (judges.length === 0) {
+        jc.innerHTML = `<div class="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-8 text-center text-slate-500 text-sm">尚未有评委扫码注册。发布大赛后将生成各等级入口，评委扫码即自动注册领号。</div>`;
+      } else {
+        jc.innerHTML = LEVEL_ORDER
+          .filter(lv => grouped[lv].length > 0)
+          .map(lv => {
+            const meta = LEVEL_META[lv];
+            const items = grouped[lv].map(j => `
+              <div class="bg-slate-900/40 border border-slate-900 p-3 rounded-xl flex justify-between items-center gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-8 h-8 rounded-lg ${meta.badgeCls} font-bold font-mono flex items-center justify-center text-xs flex-shrink-0">${j.seq}</div>
+                  <h4 class="font-bold text-slate-200 text-sm truncate">${escapeHtml(j.name)}</h4>
+                  ${levelBadge(j.level)}
+                </div>
+                <button onclick="deleteJudge(${j.id})" class="text-[10px] font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-2 py-1 rounded-lg transition flex-shrink-0">删除</button>
+              </div>`).join('');
             return `
-            <div class="bg-slate-900/40 border border-slate-900 p-4 rounded-xl flex justify-between items-start gap-4">
-              <div class="flex-grow min-w-0">
-                <div class="flex items-center gap-2 mb-1 flex-wrap">
-                  <div class="w-8 h-8 rounded-lg bg-indigo-900/20 text-indigo-400 font-bold font-mono border border-indigo-500/20 flex items-center justify-center text-xs">${idx+1}</div>
-                  <h4 class="font-bold text-slate-200 text-sm">${escapeHtml(j.name)} ${j.seat_no ? `<span class="text-[10px] text-slate-500 font-mono">· ${escapeHtml(j.seat_no)}</span>` : ''}</h4>
-                  ${lvl}
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 px-1">
+                  <span>${meta.emoji}</span>
+                  <span class="text-xs font-bold text-slate-300">${meta.label}评委</span>
+                  <span class="text-[10px] text-slate-500 font-mono">${grouped[lv].length} 位</span>
                 </div>
-                <div class="flex items-center gap-2 mt-2">
-                  <code class="text-[10px] text-emerald-400 bg-slate-950 border border-slate-800 px-2 py-1 rounded font-mono truncate flex-grow">${link}</code>
-                  <button onclick="copyText('${link}')" class="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">复制</button>
-                  <a href="${link}" target="_blank" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">打开</a>
-                </div>
-              </div>
-              <button onclick="deleteJudge(${j.id})" class="text-xs font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-2.5 py-1.5 rounded-lg transition duration-150 flex-shrink-0">删除</button>
-            </div>`;
+                ${items}
+              </div>`;
           }).join('');
+      }
       document.getElementById('judges-list-counter').innerText = `已注册：${judges.length} 位`;
 
       // 侧栏统计
@@ -519,17 +666,17 @@
       const { works, judges } = compDetail;
       const isWorksOk = works.length >= 3;
       const isWeightsOk = totalWeight === 100;
-      const isJudgesOk = judges.length >= 1;
       const set = (id, label, ok, okText, failText) => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = `<span class="text-xs text-slate-300">${label}</span> <span class="text-xs font-bold font-mono ${ok ? 'text-emerald-400' : 'text-rose-500'}">${ok ? okText : failText}</span>`;
       };
       set('checklist-item-works', `入围作品数量 &gt;= 3 (当前 ${works.length})`, isWorksOk, '✓ 通过', '不通过');
       set('checklist-item-weights', `指标占比累加 = 100% (当前 ${totalWeight}%)`, isWeightsOk, '✓ 配平', '未配平');
-      set('checklist-item-judges', `评委数量 &gt;= 1 (当前 ${judges.length})`, isJudgesOk, '✓ 通过', '不通过');
+      // 评委无需预录: 发布后扫码自动注册, 此处仅展示当前已注册数 (不阻塞发布)
+      set('checklist-item-judges', `评委数量 (发布后扫码自动注册, 当前 ${judges.length})`, true, '✓ 可发布', '可发布');
 
       const btn = document.getElementById('btn-publish');
-      const allOk = isWorksOk && isWeightsOk && isJudgesOk;
+      const allOk = isWorksOk && isWeightsOk;
       if (allOk) {
         btn.disabled = false;
         btn.className = "w-full py-4 rounded-2xl font-black tracking-widest text-sm text-center transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 text-slate-950 shadow-neon-emerald cursor-pointer hover:scale-[1.01]";
@@ -543,31 +690,32 @@
 
     function renderPublishLinks() {
       const area = document.getElementById('publish-links-area');
-      if (!currentComp.share_token) {
-        area.innerHTML = `<div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl"><p class="text-xs text-slate-500 text-center py-10">尚未发布。完成配平后点击左侧按钮，将在此生成评委评分链接与大屏链接。</p></div>`;
+      // 发布判据: 三个等级 token 任一生成即视为已发布
+      if (!currentComp.expert_token && !currentComp.senior_token && !currentComp.normal_token) {
+        area.innerHTML = `<div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl"><p class="text-xs text-slate-500 text-center py-10">尚未发布。完成配平后点击左侧按钮，将在此生成 3 个等级的评委评分入口链接与大屏链接。</p></div>`;
         return;
       }
-      const shareUrl = `${location.origin}/j/${currentComp.share_token}`;
+      const linkRow = (label, emoji, url, colorCls) => `
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">${emoji} ${label}</div>
+          <div class="flex items-center gap-2"><code class="text-xs ${colorCls} font-mono flex-grow truncate">${url}</code><button onclick="copyText('${url}')" class="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">复制</button><a href="${url}" target="_blank" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">打开</a></div>
+        </div>`;
+      const expertUrl = `${location.origin}/j/${currentComp.expert_token}`;
+      const seniorUrl = `${location.origin}/j/${currentComp.senior_token}`;
+      const normalUrl = `${location.origin}/j/${currentComp.normal_token}`;
       const screenUrl = `${location.origin}/s/${currentComp.screen_token}`;
       const adminUrl = `${location.origin}/admin.html?id=${currentComp.id}`;
       area.innerHTML = `
         <div class="bg-slate-900/50 border border-emerald-500/30 p-5 rounded-2xl space-y-4">
           <div class="flex items-center gap-2"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span><span class="text-xs font-bold text-emerald-400 font-mono uppercase tracking-widest">已发布 · ACTIVE</span></div>
           <div class="space-y-3">
-            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">📱 评委评分入口 (分享给所有评委)</div>
-              <div class="flex items-center gap-2"><code class="text-xs text-emerald-400 font-mono flex-grow truncate">${shareUrl}</code><button onclick="copyText('${shareUrl}')" class="text-[10px] font-bold text-blue-400 px-2 py-1 rounded bg-slate-800">复制</button><a href="${shareUrl}" target="_blank" class="text-[10px] font-bold text-emerald-400 px-2 py-1 rounded bg-slate-800">打开</a></div>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">🖥️ 大屏实时排名 (投放到现场屏幕)</div>
-              <div class="flex items-center gap-2"><code class="text-xs text-cyan-400 font-mono flex-grow truncate">${screenUrl}</code><button onclick="copyText('${screenUrl}')" class="text-[10px] font-bold text-blue-400 px-2 py-1 rounded bg-slate-800">复制</button><a href="${screenUrl}" target="_blank" class="text-[10px] font-bold text-cyan-400 px-2 py-1 rounded bg-slate-800">打开</a></div>
-            </div>
-            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
-              <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">⚙️ 后台管理</div>
-              <div class="flex items-center gap-2"><code class="text-xs text-slate-400 font-mono flex-grow truncate">${adminUrl}</code><button onclick="copyText('${adminUrl}')" class="text-[10px] font-bold text-blue-400 px-2 py-1 rounded bg-slate-800">复制</button></div>
-            </div>
+            ${linkRow('专家评委入口 ×1.5 (分享给专家评委)', '🏅', expertUrl, 'text-amber-400')}
+            ${linkRow('资深评委入口 ×1.2 (分享给资深评委)', '🔷', seniorUrl, 'text-indigo-400')}
+            ${linkRow('普通评委入口 ×1.0 (分享给普通评委)', '⚪', normalUrl, 'text-slate-300')}
+            ${linkRow('大屏实时排名 (投放到现场屏幕)', '🖥️', screenUrl, 'text-cyan-400')}
+            ${linkRow('后台管理', '⚙️', adminUrl, 'text-slate-400')}
           </div>
-          <div class="text-[10px] text-slate-500 pt-2 border-t border-slate-800">提示：每位评委也有独立的专属评分链接，可在「评委名单录入」标签页中查看与复制。</div>
+          <div class="text-[10px] text-slate-500 pt-2 border-t border-slate-800 leading-relaxed">提示：将对应等级的入口链接/二维码发给相应评委，评委扫码即按等级内顺序自动注册领号（如专家1号、专家2号…），首次扫码即绑定设备锁定编号。「评委扫码注册」标签页可实时查看已注册评委。</div>
         </div>`;
     }
 
@@ -584,20 +732,18 @@
       return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    // 大赛名称: 单行显示, 名称越长字号越小, 避免换行或被截断; 悬停可见全名
-    function setHeaderTitle(name) {
+    // 大赛名称: 分两行显示, 主标题(第一行)略大, 副标题(第二行)略小, 均水平居中
+    function setHeaderTitle(name, subtitle) {
       const el = document.getElementById('header-title');
       if (!el) return;
-      el.innerText = name;
-      el.setAttribute('title', name);
-      const len = (name || '').length;
-      let cls = 'lg:text-[1.85rem] tracking-[0.12em]';
-      if (len > 18) cls = 'lg:text-2xl tracking-[0.1em]';
-      if (len > 26) cls = 'lg:text-xl tracking-[0.08em]';
-      if (len > 34) cls = 'lg:text-lg tracking-[0.06em]';
-      el.className = el.className
-        .replace(/text-xl|text-2xl|text-lg|sm:text-2xl|lg:text-\[1\.85rem\]|tracking-\[0?\.\d+em\]/g, '')
-        + ' ' + cls;
+      const sub = (subtitle || '').trim();
+      if (sub) {
+        // 副标题需自带 bg-clip-text 渐变, 否则继承 h1 的 text-transparent 会不可见
+        el.innerHTML = `<div class="leading-tight bg-gradient-to-r from-white via-cyan-100 to-slate-400 bg-clip-text text-transparent">${escapeHtml(name)}</div><div class="text-base sm:text-lg font-bold opacity-80 leading-tight mt-1 bg-gradient-to-r from-cyan-200 to-slate-400 bg-clip-text text-transparent">${escapeHtml(sub)}</div>`;
+      } else {
+        el.innerText = name;
+      }
+      el.setAttribute('title', name + (sub ? ' · ' + sub : ''));
     }
 
     // 等级 -> 标签 HTML
@@ -609,17 +755,6 @@
       };
       const m = map[level] || map.normal;
       return `<span class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${m.cls}">${m.label}</span>`;
-    }
-
-    // 一键生成样例大赛
-    async function seedDemo() {
-      if (!confirm('将生成一份样例大赛（6 组作品 + 3 项标准 + 7 位含等级的评委）。确认继续？')) return;
-      const res = await apiPost('/api/seed/demo', {});
-      if (!res.ok) { pushToast(res.error); return; }
-      await loadCompetitions();
-      document.getElementById('comp-selector').value = res.data.competition_id;
-      onSelectCompetition(res.data.competition_id);
-      pushToast('⚡ 样例大赛已生成，可在「概览检查发布」中发布');
     }
 
     function pushToast(message) {
