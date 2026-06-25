@@ -84,12 +84,13 @@
     </header>
 
     <div class="flex-grow overflow-y-auto p-4 space-y-6 pb-40">
-      <div class="bg-slate-900/30 border border-slate-900 p-4 rounded-2xl space-y-1">
-        <div class="flex items-center gap-1.5 mb-1">
+      <div class="bg-slate-900/30 border border-slate-900 p-4 rounded-2xl space-y-2">
+        <div class="flex items-center gap-1.5 flex-wrap">
           <span id="detail-work-cat" class="text-[9px] bg-blue-500/10 border border-blue-500/25 text-blue-400 font-mono font-bold px-2 py-0.5 rounded">类别</span>
           <span id="detail-work-team" class="text-[10px] text-slate-400 font-semibold truncate">团队</span>
         </div>
         <p id="detail-work-desc" class="text-xs text-slate-500 leading-relaxed">作品简介</p>
+        <div id="detail-work-access" class="hidden pt-1"></div>
       </div>
       <div class="space-y-6" id="sliders-container"></div>
     </div>
@@ -222,6 +223,11 @@
       const container = document.getElementById('works-feed-container');
       container.innerHTML = dashboard.works.map((w, idx) => {
         const attempt = w.attempt || 0;
+        const safeAccessUrl = safeUrl(w.access_url);
+        const hasUrl = !!safeAccessUrl;
+        const visitBtn = hasUrl
+          ? `<a href="${escapeHtml(safeAccessUrl)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 text-[10px] font-bold transition flex items-center gap-1" title="${escapeHtml(safeAccessUrl)}">🔗 访问</a>`
+          : '';
         let statusBadge, borderClass, bgClass, actionBtn;
         if (attempt === 0) {
           statusBadge = `<span class="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-full font-bold"><span class="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse"></span>等待打分</span>`;
@@ -237,20 +243,26 @@
           borderClass = 'border-amber-500/20'; bgClass = 'bg-slate-900/20 opacity-70';
         }
         const final = attempt > 0 ? calcWeighted(w.scores).toFixed(2) : null;
+        const nameHtml = hasUrl
+          ? `<a href="${escapeHtml(safeAccessUrl)}" target="_blank" rel="noopener noreferrer" class="font-extrabold text-slate-100 hover:text-cyan-300 text-sm tracking-wide truncate inline-flex items-center gap-1" title="点击访问项目: ${escapeHtml(safeAccessUrl)}">${escapeHtml(w.name)} <span class="text-cyan-400 text-[10px]">↗</span></a>`
+          : `<h4 class="font-extrabold text-slate-100 text-sm tracking-wide truncate">${escapeHtml(w.name)}</h4>`;
         return `
           <div class="border rounded-2xl p-4 flex justify-between items-center transition-all duration-300 gap-4 ${borderClass} ${bgClass}">
-            <div class="min-w-0">
+            <div class="min-w-0 flex-grow">
               <div class="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span class="text-[9px] font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400 px-1.5 rounded">#0${idx+1}</span>
                 <span class="text-[10px] text-slate-500 font-mono">${escapeHtml(w.category||'')}</span>
                 ${statusBadge}
               </div>
-              <h4 class="font-extrabold text-slate-100 text-sm tracking-wide truncate">${escapeHtml(w.name)}</h4>
+              ${nameHtml}
               <p class="text-xs text-slate-400 truncate mt-0.5">${escapeHtml(w.team||'')}</p>
             </div>
             <div class="flex flex-col items-end gap-2 flex-shrink-0">
               ${final !== null ? `<div class="font-mono text-base font-extrabold text-blue-400">${final}分</div>` : `<div class="font-mono text-base font-medium text-slate-700">— 分</div>`}
-              ${actionBtn}
+              <div class="flex items-center gap-1.5">
+                ${visitBtn}
+                ${actionBtn}
+              </div>
             </div>
           </div>`;
       }).join('');
@@ -286,6 +298,21 @@
       document.getElementById('detail-work-cat').innerText = w.category || '—';
       document.getElementById('detail-work-team').innerText = `团队：${w.team || '—'}`;
       document.getElementById('detail-work-desc').innerText = w.description || '';
+      // 项目访问入口: 若已配置 access_url, 在评分抽屉顶部显示访问按钮
+      const accessBtnBox = document.getElementById('detail-work-access');
+      const accessUrl = safeUrl(w.access_url);
+      if (accessBtnBox) {
+        if (accessUrl) {
+          accessBtnBox.innerHTML = `<a href="${escapeHtml(accessUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-cyan-300 hover:text-cyan-200 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 hover:border-cyan-400 px-3 py-1.5 rounded-lg transition" title="${escapeHtml(accessUrl)}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+            访问项目部署地址
+          </a>`;
+          accessBtnBox.classList.remove('hidden');
+        } else {
+          accessBtnBox.innerHTML = '';
+          accessBtnBox.classList.add('hidden');
+        }
+      }
 
       // 用作品的已有评分初始化 workingScores
       workingScores = {};
@@ -399,6 +426,8 @@
 
     // ============ 工具 ============
     function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    // 安全 URL 过滤: 仅返回 http/https URL, 防 javascript: 等 XSS 协议注入
+    function safeUrl(u){const s=String(u??'').trim();if(!s)return '';return /^https?:\/\//i.test(s)?s:'';}
 
     function playSound(type) {
       try {

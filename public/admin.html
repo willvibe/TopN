@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.bootcdn.net/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="/vendor/qrcode.min.js"></script>
   <link href="https://fonts.loli.net/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
@@ -93,6 +94,49 @@
     </div>
   </div>
 
+  <!-- 编辑作品 Modal -->
+  <div id="edit-work-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white">编辑作品信息</h3>
+        <button onclick="closeEditWorkModal()" class="text-slate-400 hover:text-slate-200 text-xl leading-none">×</button>
+      </div>
+      <form id="form-edit-work" class="space-y-4" onsubmit="saveEditWork(event)">
+        <input type="hidden" id="edit-work-id">
+        <div><label class="text-xs text-slate-400 block mb-1">作品名称</label><input required type="text" id="edit-work-name" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"></div>
+        <div><label class="text-xs text-slate-400 block mb-1">团队名称</label><input required type="text" id="edit-work-team" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"></div>
+        <div><label class="text-xs text-slate-400 block mb-1">赛道/领域</label><input required type="text" id="edit-work-category" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"></div>
+        <div><label class="text-xs text-slate-400 block mb-1">项目简介</label><textarea required id="edit-work-desc" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition h-20 resize-none"></textarea></div>
+        <div><label class="text-xs text-slate-400 block mb-1">项目访问地址 <span class="text-slate-600">(部署好的 web 应用 URL)</span></label><input type="url" id="edit-work-access-url" placeholder="https://example.com/demo/your-project" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition"></div>
+        <div class="flex gap-3 justify-end pt-2 sticky bottom-0 bg-slate-900 -mx-6 -mb-6 px-6 py-3 border-t border-slate-800">
+          <button type="button" onclick="closeEditWorkModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">取消</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-500 text-white text-xs font-extrabold hover:shadow-neon-blue transition">保存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 二维码 Modal -->
+  <div id="qr-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
+      <div class="flex items-center justify-between">
+        <h3 id="qr-modal-title" class="text-lg font-bold text-white">扫码评分</h3>
+        <button onclick="closeQrModal()" class="text-slate-400 hover:text-slate-200 text-xl leading-none">×</button>
+      </div>
+      <div id="qr-modal-label" class="text-xs text-slate-400 -mt-2"></div>
+      <div class="bg-white p-4 rounded-2xl flex items-center justify-center mx-auto" style="width:240px;height:240px;">
+        <img id="qr-modal-img" alt="二维码" class="w-full h-full" />
+      </div>
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+        <code id="qr-modal-url" class="text-[11px] text-blue-400 font-mono break-all"></code>
+      </div>
+      <div class="flex gap-2 justify-center">
+        <button onclick="downloadQrImage()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-500 text-white text-xs font-bold hover:shadow-neon-blue transition">⬇ 下载二维码 PNG</button>
+        <button onclick="copyCurrentQrUrl()" class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition">复制链接</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MAIN WORKSPACE -->
   <main id="workspace" class="hidden flex-grow flex flex-col lg:flex-row h-[calc(100vh-100px)] overflow-hidden">
     <!-- LEFT SIDEBAR -->
@@ -156,6 +200,7 @@
                 <div><label class="text-xs text-slate-400 block mb-1">团队名称</label><input required type="text" id="work-team" placeholder="如：极速磁弦实验室" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
                 <div><label class="text-xs text-slate-400 block mb-1">赛道/领域</label><input required type="text" id="work-category" placeholder="如：量子交通 / 量子计算" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
                 <div><label class="text-xs text-slate-400 block mb-1">项目简介</label><textarea required id="work-desc" placeholder="请输入一句话简介..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150 h-20 resize-none"></textarea></div>
+                <div><label class="text-xs text-slate-400 block mb-1">项目访问地址 <span class="text-slate-600">(部署好的 web 应用 URL, 评委点击即可访问)</span></label><input type="url" id="work-access-url" placeholder="https://example.com/demo/your-project" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:shadow-neon-blue transition duration-150"></div>
                 <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-500 text-white font-bold py-3 rounded-xl transition duration-150 hover:shadow-neon-blue text-sm flex items-center justify-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   添加作品至决赛池
@@ -412,11 +457,47 @@
       const team = document.getElementById('work-team').value.trim();
       const category = document.getElementById('work-category').value.trim();
       const desc = document.getElementById('work-desc').value.trim();
-      const res = await apiPost(`/api/competitions/${currentComp.id}/works`, { name, team, category, description: desc });
+      const accessUrl = document.getElementById('work-access-url').value.trim();
+      const res = await apiPost(`/api/competitions/${currentComp.id}/works`, { name, team, category, description: desc, access_url: accessUrl });
       if (!res.ok) { pushToast(res.error); return; }
       compDetail.works.push(res.data);
       document.getElementById('form-work').reset();
       pushToast(`🎉 已添加作品: ${name}`);
+      renderAll();
+    }
+
+    // ============ 作品编辑 ============
+    function openEditWorkModal(workId) {
+      const w = compDetail.works.find(x => x.id === workId);
+      if (!w) return;
+      document.getElementById('edit-work-id').value = w.id;
+      document.getElementById('edit-work-name').value = w.name || '';
+      document.getElementById('edit-work-team').value = w.team || '';
+      document.getElementById('edit-work-category').value = w.category || '';
+      document.getElementById('edit-work-desc').value = w.description || '';
+      document.getElementById('edit-work-access-url').value = w.access_url || '';
+      document.getElementById('edit-work-modal').classList.remove('hidden');
+    }
+    function closeEditWorkModal() {
+      document.getElementById('edit-work-modal').classList.add('hidden');
+    }
+    async function saveEditWork(e) {
+      e.preventDefault();
+      const id = Number(document.getElementById('edit-work-id').value);
+      const payload = {
+        name: document.getElementById('edit-work-name').value.trim(),
+        team: document.getElementById('edit-work-team').value.trim(),
+        category: document.getElementById('edit-work-category').value.trim(),
+        description: document.getElementById('edit-work-desc').value.trim(),
+        access_url: document.getElementById('edit-work-access-url').value.trim(),
+      };
+      const res = await apiPut(`/api/works/${id}`, payload);
+      if (!res.ok) { pushToast(res.error || '保存失败'); return; }
+      // 同步本地数据
+      const idx = compDetail.works.findIndex(w => w.id === id);
+      if (idx >= 0) compDetail.works[idx] = { ...compDetail.works[idx], ...res.data };
+      closeEditWorkModal();
+      pushToast(`✅ 已更新作品: ${payload.name}`);
       renderAll();
     }
 
@@ -579,18 +660,27 @@
       const wc = document.getElementById('works-cards-container');
       wc.innerHTML = works.length === 0
         ? `<div class="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-10 text-center select-none text-slate-500">暂无入围作品，请在左侧表单录入</div>`
-        : works.map((w, idx) => `
+        : works.map((w, idx) => {
+          const safeAccessUrl = safeUrl(w.access_url);
+          const hasUrl = !!safeAccessUrl;
+          const urlHost = hasUrl ? (() => { try { return new URL(safeAccessUrl).host; } catch(_) { return safeAccessUrl; } })() : '';
+          return `
           <div class="work-card bg-slate-900/40 hover:bg-slate-900/70 border border-slate-900 hover:border-slate-800 p-4 rounded-xl flex justify-between items-center transition duration-150 gap-3" draggable="true" data-work-id="${w.id}" style="cursor:grab">
             <div class="flex items-center gap-3 min-w-0 flex-grow">
               <div class="drag-handle cursor-grab text-slate-500 hover:text-blue-400 transition flex-shrink-0 flex items-center justify-center w-7 h-10 rounded-lg hover:bg-slate-800 text-lg leading-none select-none" title="拖动调整出场顺序">⠿</div>
               <div class="w-10 h-10 rounded-lg bg-blue-900/20 text-blue-400 font-bold font-mono border border-blue-500/20 flex items-center justify-center flex-shrink-0 work-seq-badge">${idx+1}</div>
-              <div class="min-w-0">
+              <div class="min-w-0 flex-grow">
                 <h4 class="font-extrabold text-slate-100 text-sm tracking-wide flex items-center gap-2">${escapeHtml(w.name)} <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">${escapeHtml(w.category)}</span></h4>
                 <p class="text-xs text-slate-400 font-medium mt-0.5 truncate">${escapeHtml(w.team)} · <span class="text-[10px] text-slate-500">${escapeHtml(w.description||'')}</span></p>
+                ${hasUrl ? `<a href="${escapeHtml(safeAccessUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 mt-1 text-[10px] text-cyan-400 hover:text-cyan-300 font-mono truncate" title="${escapeHtml(safeAccessUrl)}">🔗 ${escapeHtml(urlHost)} <span class="text-slate-600">↗</span></a>` : `<span class="inline-block mt-1 text-[10px] text-slate-600 font-mono">🔗 未配置访问地址</span>`}
               </div>
             </div>
-            <button onclick="deleteWork(${w.id})" class="text-xs font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-2.5 py-1.5 rounded-lg transition duration-150 flex-shrink-0">移出决赛</button>
-          </div>`).join('');
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button onclick="openEditWorkModal(${w.id})" class="text-xs font-semibold text-blue-400 hover:text-blue-300 hover:bg-blue-500/5 px-2.5 py-1.5 rounded-lg transition duration-150 border border-blue-500/20" title="编辑作品信息">✏️ 编辑</button>
+              <button onclick="deleteWork(${w.id})" class="text-xs font-semibold text-rose-500/80 hover:text-rose-400 hover:bg-rose-500/5 px-2.5 py-1.5 rounded-lg transition duration-150">移出决赛</button>
+            </div>
+          </div>`;
+        }).join('');
       document.getElementById('works-list-counter').innerText = `已注册：${works.length} 组`;
       initWorksSortable();
 
@@ -695,10 +785,18 @@
         area.innerHTML = `<div class="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl"><p class="text-xs text-slate-500 text-center py-10">尚未发布。完成配平后点击左侧按钮，将在此生成 3 个等级的评委评分入口链接与大屏链接。</p></div>`;
         return;
       }
-      const linkRow = (label, emoji, url, colorCls) => `
+      // 把任意字符串编码为可安全嵌入 HTML 属性的 JS 字符串字面量
+      // 先 JSON.stringify 得到 "..." 形式, 再 escapeHtml 把 " 转为 &quot;, 浏览器解析后还原
+      const jsAttr = (s) => escapeHtml(JSON.stringify(String(s ?? '')));
+      const linkRow = (label, emoji, url, colorCls, withQr) => `
         <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
-          <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">${emoji} ${label}</div>
-          <div class="flex items-center gap-2"><code class="text-xs ${colorCls} font-mono flex-grow truncate">${url}</code><button onclick="copyText('${url}')" class="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">复制</button><a href="${url}" target="_blank" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">打开</a></div>
+          <div class="text-[10px] text-slate-500 font-mono uppercase mb-1">${escapeHtml(emoji + ' ' + label)}</div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <code class="text-xs ${colorCls} font-mono flex-grow truncate">${escapeHtml(url)}</code>
+            <button onclick="copyText(${jsAttr(url)})" class="text-[10px] font-bold text-blue-400 hover:text-blue-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">复制</button>
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded bg-slate-800 transition flex-shrink-0">打开</a>
+            ${withQr ? `<button onclick="showQrModal(${jsAttr(label)}, ${jsAttr(emoji)}, ${jsAttr(url)})" class="text-[10px] font-bold text-amber-400 hover:text-amber-300 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 transition flex-shrink-0">📱 二维码</button>` : ''}
+          </div>
         </div>`;
       const expertUrl = `${location.origin}/j/${currentComp.expert_token}`;
       const seniorUrl = `${location.origin}/j/${currentComp.senior_token}`;
@@ -709,14 +807,95 @@
         <div class="bg-slate-900/50 border border-emerald-500/30 p-5 rounded-2xl space-y-4">
           <div class="flex items-center gap-2"><span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span><span class="text-xs font-bold text-emerald-400 font-mono uppercase tracking-widest">已发布 · ACTIVE</span></div>
           <div class="space-y-3">
-            ${linkRow('专家评委入口 ×1.5 (分享给专家评委)', '🏅', expertUrl, 'text-amber-400')}
-            ${linkRow('资深评委入口 ×1.2 (分享给资深评委)', '🔷', seniorUrl, 'text-indigo-400')}
-            ${linkRow('普通评委入口 ×1.0 (分享给普通评委)', '⚪', normalUrl, 'text-slate-300')}
-            ${linkRow('大屏实时排名 (投放到现场屏幕)', '🖥️', screenUrl, 'text-cyan-400')}
-            ${linkRow('后台管理', '⚙️', adminUrl, 'text-slate-400')}
+            ${linkRow('专家评委入口 ×1.5 (分享给专家评委)', '🏅', expertUrl, 'text-amber-400', true)}
+            ${linkRow('资深评委入口 ×1.2 (分享给资深评委)', '🔷', seniorUrl, 'text-indigo-400', true)}
+            ${linkRow('普通评委入口 ×1.0 (分享给普通评委)', '⚪', normalUrl, 'text-slate-300', true)}
+            ${linkRow('大屏实时排名 (投放到现场屏幕)', '🖥️', screenUrl, 'text-cyan-400', true)}
+            ${linkRow('后台管理', '⚙️', adminUrl, 'text-slate-400', false)}
           </div>
-          <div class="text-[10px] text-slate-500 pt-2 border-t border-slate-800 leading-relaxed">提示：将对应等级的入口链接/二维码发给相应评委，评委扫码即按等级内顺序自动注册领号（如专家1号、专家2号…），首次扫码即绑定设备锁定编号。「评委扫码注册」标签页可实时查看已注册评委。</div>
+          <div class="text-[10px] text-slate-500 pt-2 border-t border-slate-800 leading-relaxed">提示：将对应等级的入口链接/二维码发给相应评委，评委扫码即按等级内顺序自动注册领号（如专家1号、专家2号…），首次扫码即绑定设备锁定编号。「评委扫码注册」标签页可实时查看已注册评委。点击「📱 二维码」可查看与下载 PNG 二维码图片。</div>
         </div>`;
+    }
+
+    // ============ 二维码生成 (qrcode-generator 库) ============
+    let currentQrUrl = '';
+    let currentQrTitle = '';
+    function showQrModal(label, emoji, url) {
+      currentQrUrl = url;
+      currentQrTitle = `${emoji} ${label}`;
+      document.getElementById('qr-modal-title').innerText = `${emoji} ${label}`;
+      document.getElementById('qr-modal-label').innerText = '扫码即可进入对应入口';
+      document.getElementById('qr-modal-url').innerText = url;
+      // 生成二维码的核心逻辑
+      const generateQr = () => {
+        try {
+          // typeNumber=0 自动适配容量; errorCorrectionLevel='M' 中等容错
+          const qr = qrcode(0, 'M');
+          qr.addData(url);
+          qr.make();
+          // createDataURL 返回 GIF base64, 可直接用作 <img src>
+          const dataUrl = qr.createDataURL(8, 2);  // cellSize=8, margin=2
+          document.getElementById('qr-modal-img').src = dataUrl;
+          document.getElementById('qr-modal-img').dataset.dataUrl = dataUrl;
+        } catch (e) {
+          pushToast('二维码生成失败: ' + (e.message || e));
+          return;
+        }
+        document.getElementById('qr-modal').classList.remove('hidden');
+      };
+      // 若 qrcode 库已加载, 直接生成; 否则动态加载本地库后重试
+      if (typeof qrcode === 'function') {
+        generateQr();
+      } else {
+        const script = document.createElement('script');
+        script.src = '/vendor/qrcode.min.js';
+        script.onload = generateQr;
+        script.onerror = () => pushToast('二维码库加载失败, 请刷新页面重试');
+        document.head.appendChild(script);
+      }
+    }
+    function closeQrModal() {
+      document.getElementById('qr-modal').classList.add('hidden');
+    }
+    function copyCurrentQrUrl() {
+      copyText(currentQrUrl);
+    }
+    function downloadQrImage() {
+      const img = document.getElementById('qr-modal-img');
+      const dataUrl = img.dataset.dataUrl || img.src;
+      if (!dataUrl) { pushToast('二维码尚未生成'); return; }
+      // 安全文件名: 仅保留中文/字母/数字, 其余替换为 _
+      const safeName = (currentQrTitle || 'qrcode').replace(/[^\w\u4e00-\u9fa5]+/g, '_').replace(/^_+|_+$/g, '') || 'qrcode';
+      // qrcode-generator 库 createDataURL 返回的是 GIF, 用 canvas 转为 PNG 并加白底, 兼容性更好
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const tempImg = new Image();
+      tempImg.onload = () => {
+        canvas.width = tempImg.width;
+        canvas.height = tempImg.height;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(tempImg, 0, 0);
+        const pngDataUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = pngDataUrl;
+        a.download = `TopN_${safeName}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        pushToast('⬇ 二维码 PNG 已下载');
+      };
+      tempImg.onerror = () => {
+        // 降级: 直接用原始 data URL 下载 (GIF 格式但 .png 扩展名)
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `TopN_${safeName}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        pushToast('⬇ 二维码已下载');
+      };
+      tempImg.src = dataUrl;
     }
 
     async function publishActivity() {
@@ -730,6 +909,12 @@
     // ============ 工具 ============
     function escapeHtml(s) {
       return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    // 安全 URL 过滤: 仅返回 http/https URL, 防 javascript: 等 XSS 协议注入
+    function safeUrl(u) {
+      const s = String(u ?? '').trim();
+      if (!s) return '';
+      return /^https?:\/\//i.test(s) ? s : '';
     }
 
     // 大赛名称: 分两行显示, 主标题(第一行)略大, 副标题(第二行)略小, 均水平居中

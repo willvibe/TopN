@@ -57,6 +57,11 @@ const SQL = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
         column: 'name_subtitle',
         ddl: `ALTER TABLE competitions ADD COLUMN name_subtitle VARCHAR(200) DEFAULT ''`,
       },
+      {
+        table: 'works',
+        column: 'access_url',
+        ddl: `ALTER TABLE works ADD COLUMN access_url VARCHAR(500) DEFAULT ''`,
+      },
     ];
     for (const m of migrations) {
       const [cols] = await conn.query(

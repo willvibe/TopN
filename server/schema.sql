@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS works (
   team           VARCHAR(200) DEFAULT '',
   category       VARCHAR(100) DEFAULT '',
   description    TEXT,
+  access_url     VARCHAR(500) DEFAULT '',       -- 项目访问地址(部署好的 web 应用 URL)
   created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_works_comp FOREIGN KEY (competition_id)
     REFERENCES competitions(id) ON DELETE CASCADE,

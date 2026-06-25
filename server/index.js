@@ -191,6 +191,7 @@ async function buildCompetitionSnapshot(competitionId) {
       team: w.team,
       category: w.category,
       description: w.description,
+      access_url: w.access_url || '',
       final: agg.final,
       extreme: agg.extreme,
       perJudge: perJudgeView,
@@ -309,40 +310,64 @@ app.delete('/api/competitions/:id', async (req, res) => {
 });
 
 // ---------- 作品 CRUD ----------
+// 安全过滤 access_url: 仅允许 http/https 协议, 防 javascript: 等 XSS 注入
+function sanitizeAccessUrl(url) {
+  if (!url) return '';
+  const s = String(url).trim();
+  if (!s) return '';
+  // 仅允许 http:// 和 https:// 开头, 其余一律丢弃
+  if (/^https?:\/\//i.test(s)) return s;
+  return '';
+}
+
 app.post('/api/competitions/:id/works', async (req, res) => {
   const comp = await getCompetition(req.params.id);
   if (!comp) return res.status(404).json(fail('大赛不存在', 404));
-  const { name, team, category, description, seq } = req.body || {};
+  const { name, team, category, description, access_url, seq } = req.body || {};
   if (!name) return res.status(400).json(fail('作品名称必填'));
   const [[maxRow]] = await pool.query(
     `SELECT COALESCE(MAX(seq),0) AS m FROM works WHERE competition_id=?`, [comp.id]
   );
   const seqVal = seq !== undefined ? Number(seq) : maxRow.m + 1;
   const [r] = await pool.query(
-    `INSERT INTO works (competition_id, seq, name, team, category, description)
-     VALUES (?,?,?,?,?,?)`,
-    [comp.id, seqVal, name, team || '', category || '', description || '']
+    `INSERT INTO works (competition_id, seq, name, team, category, description, access_url)
+     VALUES (?,?,?,?,?,?,?)`,
+    [comp.id, seqVal, name, team || '', category || '', description || '', sanitizeAccessUrl(access_url)]
   );
   const [rows] = await pool.query(`SELECT * FROM works WHERE id=?`, [r.insertId]);
+  // 新增作品后实时推送大屏刷新
+  await notifyScreen(comp.id);
   res.json(ok(rows[0]));
 });
 
 app.put('/api/works/:workId', async (req, res) => {
-  const { name, team, category, description, seq } = req.body || {};
+  const { name, team, category, description, access_url, seq } = req.body || {};
+  // access_url 为字符串字段, 空串也是合法值(可清空), 故显式判断 undefined/null 才跳过
+  const safeUrl = (access_url === undefined || access_url === null) ? undefined : sanitizeAccessUrl(access_url);
   await pool.query(
     `UPDATE works SET
        name=COALESCE(?,name), team=COALESCE(?,team),
        category=COALESCE(?,category), description=COALESCE(?,description),
+       access_url=COALESCE(?,access_url),
        seq=COALESCE(?,seq)
      WHERE id=?`,
-    [name, team, category, description, seq, req.params.workId]
+    [name, team, category, description, safeUrl, seq, req.params.workId]
   );
   const [rows] = await pool.query(`SELECT * FROM works WHERE id=?`, [req.params.workId]);
+  // 编辑作品后实时推送大屏刷新 (access_url / 名称等变更需同步到 spotlight)
+  if (rows[0] && rows[0].competition_id) {
+    await notifyScreen(rows[0].competition_id);
+  }
   res.json(ok(rows[0]));
 });
 
 app.delete('/api/works/:workId', async (req, res) => {
+  // 删除前先取出 competition_id, 用于删除后推送大屏刷新
+  const [beforeRows] = await pool.query(`SELECT competition_id FROM works WHERE id=?`, [req.params.workId]);
   await pool.query(`DELETE FROM works WHERE id=?`, [req.params.workId]);
+  if (beforeRows[0] && beforeRows[0].competition_id) {
+    await notifyScreen(beforeRows[0].competition_id);
+  }
   res.json(ok({ deleted: true }));
 });
 
@@ -486,9 +511,9 @@ app.post('/api/competitions/import', async (req, res) => {
     for (const w of works) {
       i++;
       await conn.query(
-        `INSERT INTO works (competition_id, seq, name, team, category, description)
-         VALUES (?,?,?,?,?,?)`,
-        [compId, i, w.name, w.team || '', w.category || '', w.description || '']
+        `INSERT INTO works (competition_id, seq, name, team, category, description, access_url)
+         VALUES (?,?,?,?,?,?,?)`,
+        [compId, i, w.name, w.team || '', w.category || '', w.description || '', sanitizeAccessUrl(w.access_url)]
       );
     }
     i = 0;
@@ -720,7 +745,7 @@ app.get('/api/judge/:judgeId/dashboard', async (req, res) => {
     standards: standards.map(s => ({ id: s.id, name: s.name, description: s.description, weight: s.weight })),
     works: works.map(w => ({
       id: w.id, seq: w.seq, name: w.name, team: w.team,
-      category: w.category, description: w.description,
+      category: w.category, description: w.description, access_url: w.access_url || '',
       scores: myScores[w.id] || {},
       attempt: myAttempt[w.id] || 0,
     })),

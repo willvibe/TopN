@@ -10,12 +10,12 @@ const SAMPLE = {
   name_subtitle: '决赛现场 · Future Tech Innovation',
   description: '样例大赛 —— 演示 TopN 评分系统全流程',
   works: [
-    { name: 'Aetherium 超导超级环', team: '极速磁弦实验室', category: '量子交通', description: '超低温量子轨道磁阻消融技术，引领陆地飞行新纪元。' },
-    { name: 'NeuraLink 仿生脑机芯片 Pro', team: '灵境认知科研所', category: '脑机计算', description: '十万通道微创式高带宽电极集成方案，破译多脑区并行算力。' },
-    { name: 'Helios 微型聚变反应堆', team: '核聚未来极客空间', category: '新能源/低碳', description: '革命性零碳清洁能源微型化解决方案，磁约束等离子控制核心。' },
-    { name: 'BioSphere 太空自循环生态舱', team: '天外生态工程院', category: '宇航工程', description: '微型行星地表自闭环生命维持核心，支撑长期外空栖息。' },
-    { name: 'Chrono Ledger 量子密码账本', team: '暗星加密算法部', category: '信息安全', description: '对抗后量子计算时代算力突袭的高维防卫。' },
-    { name: 'Zenith 垂直起降氢空天跑车', team: '逆重力载具联盟', category: '未来出行', description: '双推折叠矢量涵道氢动力低空飞行平台。' },
+    { name: 'Aetherium 超导超级环', team: '极速磁弦实验室', category: '量子交通', description: '超低温量子轨道磁阻消融技术，引领陆地飞行新纪元。', access_url: 'https://example.com/demo/aetherium' },
+    { name: 'NeuraLink 仿生脑机芯片 Pro', team: '灵境认知科研所', category: '脑机计算', description: '十万通道微创式高带宽电极集成方案，破译多脑区并行算力。', access_url: 'https://example.com/demo/neuralink' },
+    { name: 'Helios 微型聚变反应堆', team: '核聚未来极客空间', category: '新能源/低碳', description: '革命性零碳清洁能源微型化解决方案，磁约束等离子控制核心。', access_url: 'https://example.com/demo/helios' },
+    { name: 'BioSphere 太空自循环生态舱', team: '天外生态工程院', category: '宇航工程', description: '微型行星地表自闭环生命维持核心，支撑长期外空栖息。', access_url: 'https://example.com/demo/biosphere' },
+    { name: 'Chrono Ledger 量子密码账本', team: '暗星加密算法部', category: '信息安全', description: '对抗后量子计算时代算力突袭的高维防卫。', access_url: 'https://example.com/demo/chrono-ledger' },
+    { name: 'Zenith 垂直起降氢空天跑车', team: '逆重力载具联盟', category: '未来出行', description: '双推折叠矢量涵道氢动力低空飞行平台。', access_url: 'https://example.com/demo/zenith' },
   ],
   standards: [
     { name: '创新力与前沿技术', description: '评估项目的核心创新性、技术攻坚难度以及后发技术护城河深度。', weight: 40 },
@@ -49,9 +49,9 @@ async function seedDemo() {
     for (const w of SAMPLE.works) {
       i++;
       await conn.query(
-        `INSERT INTO works (competition_id, seq, name, team, category, description)
-         VALUES (?,?,?,?,?,?)`,
-        [compId, i, w.name, w.team, w.category, w.description]
+        `INSERT INTO works (competition_id, seq, name, team, category, description, access_url)
+         VALUES (?,?,?,?,?,?,?)`,
+        [compId, i, w.name, w.team, w.category, w.description, w.access_url || '']
       );
     }
     i = 0;

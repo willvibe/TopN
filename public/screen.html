@@ -93,11 +93,15 @@
             <span id="spotlight-id-tag" class="absolute -bottom-1.5 -right-1.5 bg-slate-950 text-blue-400 border border-slate-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold font-mono">#-</span>
           </div>
           <div class="flex-grow min-w-0">
-            <h2 id="spotlight-name" class="text-xl sm:text-2xl font-bold text-white tracking-wide truncate">等待开始...</h2>
+            <h2 id="spotlight-name" class="text-xl sm:text-2xl font-bold text-white tracking-wide truncate cursor-default transition-colors">等待开始...</h2>
             <p id="spotlight-team" class="text-slate-400 text-sm mt-1 truncate">—</p>
             <div class="flex flex-wrap items-center gap-2 mt-3">
               <span id="spotlight-cat" class="bg-slate-800 text-slate-300 text-xs px-2.5 py-0.5 rounded-md font-medium border border-slate-700">—</span>
               <span id="spotlight-desc" class="text-xs text-slate-500 truncate">—</span>
+              <a id="spotlight-access-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200 border border-cyan-500/40 hover:border-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-0.5 rounded-md font-bold transition">
+                <span>🔗 访问项目</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7-7 7M5 12h16" /></svg>
+              </a>
             </div>
           </div>
         </div>
@@ -373,7 +377,34 @@
       const active = snap.works.find(w => w.id === activeId) || snap.works[0];
       if (!active) return;
       document.getElementById('spotlight-id-tag').innerText = `#${snap.works.indexOf(active)+1}`;
-      document.getElementById('spotlight-name').innerText = active.name;
+      // 项目名: 若有 access_url, 则可点击在新页面打开访问部署好的 web 应用
+      const nameEl = document.getElementById('spotlight-name');
+      const accessLinkEl = document.getElementById('spotlight-access-link');
+      const accessUrl = safeUrl(active.access_url);
+      nameEl.innerText = active.name;
+      if (accessUrl) {
+        // 让 spotlight-name 区域可点击: 设置 cursor 与 hover 效果, 点击打开新页
+        nameEl.classList.remove('cursor-default');
+        nameEl.classList.add('cursor-pointer', 'hover:text-cyan-300', 'underline', 'decoration-cyan-400/50', 'decoration-2', 'underline-offset-4');
+        nameEl.onclick = () => window.open(accessUrl, '_blank', 'noopener,noreferrer');
+        nameEl.title = `点击访问项目部署地址: ${accessUrl}`;
+        // 显示独立的访问项目按钮
+        if (accessLinkEl) {
+          accessLinkEl.href = accessUrl;
+          accessLinkEl.classList.remove('hidden');
+          accessLinkEl.classList.add('inline-flex');
+          accessLinkEl.title = `访问项目: ${accessUrl}`;
+        }
+      } else {
+        nameEl.classList.add('cursor-default');
+        nameEl.classList.remove('cursor-pointer', 'hover:text-cyan-300', 'underline', 'decoration-cyan-400/50', 'decoration-2', 'underline-offset-4');
+        nameEl.onclick = null;
+        nameEl.title = '';
+        if (accessLinkEl) {
+          accessLinkEl.classList.add('hidden');
+          accessLinkEl.classList.remove('inline-flex');
+        }
+      }
       document.getElementById('spotlight-team').innerText = `演示团队：${active.team || '—'}`;
       document.getElementById('spotlight-cat').innerText = active.category || '—';
       document.getElementById('spotlight-desc').innerText = active.description ? `· ${active.description}` : '';
@@ -713,6 +744,8 @@
     function pushToast(m){const el=document.getElementById('toast-message');if(!el)return;el.innerText=m;el.classList.remove('text-slate-400');el.classList.add('text-indigo-400');setTimeout(()=>{el.classList.remove('text-indigo-400');el.classList.add('text-slate-400');},2500);}
 
     function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    // 安全 URL 过滤: 仅返回 http/https URL, 防 javascript: 等 XSS 协议注入
+    function safeUrl(u){const s=String(u??'').trim();if(!s)return '';return /^https?:\/\//i.test(s)?s:'';}
 
     // 大赛名称: 分两行显示, 主标题(第一行)略大, 副标题(第二行)略小, 均水平居中
     function setHeaderTitle(name, subtitle) {
